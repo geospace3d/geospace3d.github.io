@@ -1,0 +1,3323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoSpace Pro 3D - Hình Học Không Gian & Đường Vectơ 3D</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js r128 & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            overflow: hidden; 
+            margin: 0; 
+            background-color: #060a12; 
+            user-select: none;
+        }
+        .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Scrollbar styling */
+        .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* CSS Over-arrow for Vector Notation */
+        .vec-sym {
+            position: relative;
+            display: inline-block;
+            padding-top: 2px;
+            font-weight: 700;
+        }
+        .vec-sym::before {
+            content: "→";
+            position: absolute;
+            top: -7px;
+            left: 50%;
+            transform: translateX(-50%) scaleX(1.15);
+            font-size: 10px;
+            line-height: 1;
+            font-weight: 900;
+            color: inherit;
+        }
+
+        /* Floating 3D Vertex Labels */
+        .vertex-label {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            color: #f8fafc;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(96, 165, 250, 0.55);
+            padding: 2px 8px;
+            border-radius: 7px;
+            font-size: 12.5px;
+            font-weight: 700;
+            pointer-events: auto;
+            cursor: pointer;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
+            white-space: nowrap;
+            z-index: 18;
+        }
+        .vertex-label:hover {
+            background: rgba(37, 99, 235, 0.95);
+            border-color: #93c5fd;
+            transform: translate(-50%, -100%) scale(1.14);
+            z-index: 40;
+        }
+        .vertex-label.custom-pt {
+            border-color: rgba(250, 204, 21, 0.75);
+            color: #fef08a;
+        }
+        .vertex-label.ratio-pt {
+            border-color: rgba(244, 114, 182, 0.8);
+            color: #fbcfe8;
+        }
+        .vertex-label.selected-pt {
+            background: #16a34a !important;
+            border-color: #86efac !important;
+            color: #ffffff !important;
+            transform: translate(-50%, -100%) scale(1.22);
+            box-shadow: 0 0 16px rgba(34, 197, 94, 0.75);
+            z-index: 45;
+        }
+
+        /* Drawn Segment Length Label */
+        .segment-label {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            color: #fde047;
+            background: rgba(15, 23, 42, 0.88);
+            border: 1px solid rgba(253, 224, 71, 0.5);
+            padding: 1.5px 6px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            pointer-events: auto;
+            cursor: pointer;
+            transition: transform 0.12s ease, background-color 0.15s ease;
+            white-space: nowrap;
+            z-index: 14;
+        }
+        .segment-label:hover {
+            background: rgba(161, 98, 7, 0.95);
+            border-color: #fef08a;
+            transform: translate(-50%, -50%) scale(1.1);
+            z-index: 36;
+        }
+
+        /* Drawn 3D Vector Floating Badge */
+        .vector-label {
+            position: absolute;
+            transform: translate(-50%, -115%);
+            color: #ffffff;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1.5px solid #f43f5e;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11.5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            pointer-events: auto;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+            transition: transform 0.12s ease, box-shadow 0.15s ease;
+            white-space: nowrap;
+            z-index: 22;
+        }
+        .vector-label:hover {
+            transform: translate(-50%, -115%) scale(1.12);
+            box-shadow: 0 0 18px rgba(244, 63, 94, 0.7);
+            z-index: 42;
+        }
+
+        /* Base Edge Parametric Tag */
+        .base-edge-label {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            color: #93c5fd;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            padding: 1px 5px;
+            border-radius: 5px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 12;
+        }
+
+        .tool-btn.active {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            border-color: #60a5fa;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.45);
+        }
+        .tool-btn[data-tool="vector"].active {
+            background: linear-gradient(135deg, #e11d48, #be123c);
+            border-color: #fda4af;
+            box-shadow: 0 0 16px rgba(225, 29, 72, 0.55);
+        }
+
+        .shape-btn.active {
+            background: linear-gradient(135deg, #1e40af, #1e3a8a);
+            color: #ffffff;
+            border-color: #60a5fa;
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35);
+        }
+
+        .tab-btn.active {
+            background: #1e293b;
+            color: #38bdf8;
+            border-bottom: 2px solid #38bdf8;
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 80;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+            align-items: center;
+        }
+        .toast {
+            background: rgba(15, 23, 42, 0.95);
+            color: #f8fafc;
+            padding: 9px 16px;
+            border-radius: 10px;
+            font-size: 12.5px;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.65);
+            animation: slideUp 0.2s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-slate-200 h-screen w-screen flex flex-col overflow-hidden bg-[#060a12]">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- TOP NAVIGATION & CONSTRUCTION TOOLBAR -->
+    <header class="h-14 shrink-0 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between gap-2 z-30">
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-2.5 shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 via-indigo-600 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 font-bold text-white text-xs">
+                <span class="vec-sym">v</span>3D
+            </div>
+            <div class="hidden sm:block">
+                <h1 class="text-sm font-bold text-white leading-tight flex items-center gap-1.5">
+                    GeoSpace Pro
+                    <span class="text-[10px] px-1.5 py-0.5 bg-rose-500/20 text-rose-300 rounded-md border border-rose-500/30 font-semibold">Vectơ & Không Gian 4.0</span>
+                </h1>
+                <p class="text-[10px] text-slate-400">Hình học không gian & Đường Vectơ Oxyz</p>
+            </div>
+        </div>
+
+        <!-- Interactive Geometry & Vector Construction Tools -->
+        <div class="flex items-center gap-1 overflow-x-auto custom-scroll py-1">
+            <button data-tool="orbit" class="tool-btn active flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Xoay camera và click vào đỉnh để đổi tên">
+                <span>🔄</span> Xoay / Chọn
+            </button>
+
+            <button data-tool="vector" class="tool-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-300 bg-rose-950/35 hover:bg-rose-900/50 border border-rose-500/30 transition whitespace-nowrap" title="Click điểm đầu A rồi điểm cuối B để vẽ đường Vectơ AB có mũi tên 3D">
+                <span>🏹</span> Kẻ Đường Vectơ (<span class="vec-sym">AB</span>)
+            </button>
+
+            <button data-tool="segment" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Click chọn 2 điểm để kẻ đoạn thẳng nối chúng">
+                <span>✏️</span> Kẻ Đoạn Thẳng
+            </button>
+
+            <button data-tool="point" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Click lên cạnh hoặc mặt của hình để chấm điểm mới">
+                <span>📍</span> Chấm Điểm
+            </button>
+
+            <button data-tool="midpoint" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Click chọn 2 đỉnh để tạo trung điểm chính xác">
+                <span>➗</span> Trung Điểm
+            </button>
+
+            <button data-tool="ratio" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Click chọn 2 đỉnh để tạo điểm chia tỉ lệ k hoặc theo độ dài bất kỳ">
+                <span>📏</span> Điểm Tỉ Lệ
+            </button>
+
+            <button data-tool="plane" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Click chọn từ 3 điểm trở lên để dựng mặt phẳng thiết diện">
+                <span>📐</span> Thiết Diện
+            </button>
+
+            <button data-tool="angle" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Click 3 điểm A, B, C để đo góc ∠ABC">
+                <span>🧭</span> Đo Góc
+            </button>
+
+            <div class="h-5 w-[1px] bg-slate-700 mx-0.5"></div>
+
+            <button data-tool="rename" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 hover:bg-slate-800 border border-transparent transition whitespace-nowrap" title="Click vào đỉnh bất kỳ để đổi tên">
+                <span>🏷️</span> Đổi Tên
+            </button>
+
+            <button data-tool="delete" class="tool-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-300 hover:bg-rose-950/60 border border-transparent transition whitespace-nowrap" title="Click vào điểm, vectơ hoặc đoạn thẳng để xóa riêng lẻ">
+                <span>🗑️</span> Xóa
+            </button>
+        </div>
+
+        <!-- Quick Camera Views -->
+        <div class="hidden xl:flex items-center gap-1 shrink-0">
+            <button onclick="setCameraPreset('iso')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[11px] text-slate-300 border border-slate-700" title="Góc nhìn chuẩn 3D">Góc 3D</button>
+            <button onclick="setCameraPreset('front')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[11px] text-slate-300 border border-slate-700" title="Nhìn chính diện">Chính diện</button>
+            <button onclick="setCameraPreset('top')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[11px] text-slate-300 border border-slate-700" title="Nhìn từ trên xuống">Từ trên</button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE: LEFT SIDEBAR + 3D CANVAS + RIGHT SIDEBAR -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- LEFT SIDEBAR: Shape Selector, Parametric Dimensions & Space Settings -->
+        <aside class="w-80 shrink-0 bg-slate-900/95 border-r border-slate-800 flex flex-col z-20 overflow-y-auto custom-scroll">
+            <div class="p-3.5 space-y-4">
+                
+                <!-- 1. Shape Library -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-[11px] font-bold text-blue-400 uppercase tracking-wider">1. Chọn Khối Hình Không Gian</h2>
+                        <span class="text-[10px] text-slate-400">10 mẫu chuẩn</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5" id="shape-selector">
+                        <!-- Dynamically populated buttons -->
+                    </div>
+                </div>
+
+                <!-- 2. Dynamic Parametric Length & Height Controls -->
+                <div class="pt-3 border-t border-slate-800/90">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                            <span>📏 2. Thay Đổi Độ Dài & Kích Thước</span>
+                        </h2>
+                        <button id="reset-dims-btn" class="text-[10px] text-slate-400 hover:text-white underline">Mặc định</button>
+                    </div>
+                    <div id="dimensions-controls" class="space-y-2.5 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                        <!-- Dynamic sliders and inputs -->
+                    </div>
+                </div>
+
+                <!-- 3. Quick Vector Rules Preset Demos (Quy tắc Vectơ Kinh điển) -->
+                <div class="pt-3 border-t border-slate-800/90">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-[11px] font-bold text-rose-400 uppercase tracking-wider">🏹 3. Mô Phỏng Nhanh Quy Tắc Vectơ</h2>
+                    </div>
+                    <div class="grid grid-cols-1 gap-1.5">
+                        <button onclick="runVectorPreset('threePoints')" class="text-left px-3 py-2 bg-rose-950/30 hover:bg-rose-900/45 border border-rose-500/30 rounded-xl text-xs transition flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-rose-200">Quy tắc 3 điểm (Chasles)</div>
+                                <div class="text-[10px] text-slate-400 font-mono-code">→SA + →AB = →SB</div>
+                            </div>
+                            <span class="text-rose-400 text-sm">▶</span>
+                        </button>
+                        <button onclick="runVectorPreset('parallelogram')" class="text-left px-3 py-2 bg-indigo-950/35 hover:bg-indigo-900/50 border border-indigo-500/30 rounded-xl text-xs transition flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-indigo-200">Quy tắc Hình bình hành</div>
+                                <div class="text-[10px] text-slate-400 font-mono-code">→AB + →AD = →AC</div>
+                            </div>
+                            <span class="text-indigo-400 text-sm">▶</span>
+                        </button>
+                        <button onclick="runVectorPreset('boxRule')" class="text-left px-3 py-2 bg-amber-950/30 hover:bg-amber-900/45 border border-amber-500/30 rounded-xl text-xs transition flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-amber-200">Quy tắc Hình hộp 3D</div>
+                                <div class="text-[10px] text-slate-400 font-mono-code">→AB + →AD + →AA' = →AC'</div>
+                            </div>
+                            <span class="text-amber-400 text-sm">▶</span>
+                        </button>
+                        <button onclick="runVectorPreset('centroidRule')" class="text-left px-3 py-2 bg-emerald-950/30 hover:bg-emerald-900/45 border border-emerald-500/30 rounded-xl text-xs transition flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-emerald-200">Hệ thức Trọng tâm / Tâm đáy</div>
+                                <div class="text-[10px] text-slate-400 font-mono-code">→SA+→SB+→SC = 3→SG</div>
+                            </div>
+                            <span class="text-emerald-400 text-sm">▶</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. Visual & Space Display Settings -->
+                <div class="pt-3 border-t border-slate-800/90 space-y-2.5">
+                    <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hiển Thị Không Gian 3D</h2>
+                    
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-300">Độ trong suốt các mặt</span>
+                        <input type="range" id="opacity-slider" min="0" max="0.85" step="0.05" value="0.26" class="w-28 accent-blue-500 cursor-pointer">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button id="toggle-axes-btn" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 border border-slate-700 transition">
+                            Trục Oxyz: Bật
+                        </button>
+                        <button id="toggle-grid-btn" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 border border-slate-700 transition">
+                            Lưới đáy: Bật
+                        </button>
+                        <button id="toggle-autorotate-btn" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 border border-slate-700 transition">
+                            Tự xoay: Tắt
+                        </button>
+                        <button id="restore-shape-btn" class="px-2.5 py-1.5 bg-blue-950/60 hover:bg-blue-900/70 rounded-lg text-xs text-blue-300 border border-blue-700/50 transition">
+                            Làm mới hình
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER 3D VIEWPORT CONTAINER -->
+        <main id="canvas-container" class="flex-1 relative w-full h-full min-h-[500px] overflow-hidden bg-gradient-to-b from-[#090f1d] to-[#050811]">
+            <!-- WebGL Canvas mounts here -->
+            <div id="webgl-mount" class="w-full h-full absolute inset-0"></div>
+
+            <!-- 2D Floating Labels Overlay -->
+            <div id="labels-container" class="w-full h-full absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+            <!-- Floating Sub-Toolbar inside Canvas -->
+            <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-3.5 py-1.5 rounded-xl shadow-xl pointer-events-auto">
+                <label class="flex items-center gap-1.5 text-xs text-slate-200 cursor-pointer" title="Áp dụng cho cả đoạn thẳng và đường vectơ">
+                    <input type="checkbox" id="dashed-line-toggle" class="rounded bg-slate-800 border-slate-600 text-blue-500">
+                    <span>Nét đứt (<span class="font-mono text-yellow-400">---</span>)</span>
+                </label>
+                <div class="h-3.5 w-[1px] bg-slate-700"></div>
+                <div class="flex items-center gap-1.5 text-xs text-slate-200">
+                    <span>Màu Vectơ:</span>
+                    <input type="color" id="vector-color-picker" value="#f43f5e" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0">
+                </div>
+                <div class="h-3.5 w-[1px] bg-slate-700"></div>
+                <label class="flex items-center gap-1.5 text-xs text-slate-200 cursor-pointer">
+                    <input type="checkbox" id="show-vec-coords-toggle" class="rounded bg-slate-800 border-slate-600 text-rose-500">
+                    <span>Hiện tọa độ <span class="vec-sym">u</span>(x;y;z)</span>
+                </label>
+                <div class="h-3.5 w-[1px] bg-slate-700"></div>
+                <label class="flex items-center gap-1.5 text-xs text-slate-200 cursor-pointer">
+                    <input type="checkbox" id="show-base-edges-toggle" class="rounded bg-slate-800 border-slate-600 text-blue-500" checked>
+                    <span>Thông số cạnh</span>
+                </label>
+                <button id="finish-plane-btn" class="hidden px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-purple-600/30 transition">
+                    ✓ Hoàn tất Thiết diện (Enter)
+                </button>
+            </div>
+
+            <!-- Bottom Status Helper Banner -->
+            <div class="absolute bottom-3 left-3 z-20 bg-slate-900/85 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl text-[11px] text-slate-300 pointer-events-none flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+                <span id="status-hint">Mẹo: Chọn công cụ "🏹 Kẻ Đường Vectơ" rồi click điểm đầu A và điểm cuối B trên hình 3D.</span>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR: TABS FOR VECTORS, VERTICES/SEGMENTS, AND FORMULAS -->
+        <aside class="w-96 shrink-0 bg-slate-900/95 border-l border-slate-800 flex flex-col z-20 overflow-hidden">
+            <!-- Right Sidebar Navigation Tabs -->
+            <div class="grid grid-cols-3 border-b border-slate-800 bg-slate-950/60 shrink-0">
+                <button onclick="switchRightTab('vectors')" id="tab-btn-vectors" class="tab-btn active py-2.5 text-xs font-bold transition flex items-center justify-center gap-1">
+                    <span>🏹</span> Vectơ (<span id="vectors-count-badge">0</span>)
+                </button>
+                <button onclick="switchRightTab('geometry')" id="tab-btn-geometry" class="tab-btn py-2.5 text-xs font-bold text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+                    <span>📍</span> Đỉnh & Đoạn (<span id="points-count-badge">0</span>)
+                </button>
+                <button onclick="switchRightTab('formulas')" id="tab-btn-formulas" class="tab-btn py-2.5 text-xs font-bold text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+                    <span>📐</span> Công Thức
+                </button>
+            </div>
+
+            <!-- TAB 1: SPATIAL VECTORS & VECTOR OPERATIONS -->
+            <div id="tab-panel-vectors" class="flex-1 overflow-y-auto custom-scroll p-3.5 space-y-4">
+                
+                <!-- 1A. Quick Draw Vector From 2 Vertices or Free Oxyz Coordinates -->
+                <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-rose-400 uppercase tracking-wider">1. Tạo Nhanh Đường Vectơ 3D</span>
+                        <button onclick="openFreeVectorModal()" class="text-[11px] px-2 py-0.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-md font-semibold transition">
+                            + Nhập tọa độ <span class="vec-sym">u</span>(x;y;z)
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Điểm gốc (Đầu):</label>
+                            <select id="quick-vec-p1" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-semibold"></select>
+                        </div>
+                        <span class="text-rose-400 font-bold mt-4">⟶</span>
+                        <div class="flex-1">
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Điểm ngọn (Cuối):</label>
+                            <select id="quick-vec-p2" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-semibold"></select>
+                        </div>
+                        <button id="quick-draw-vec-btn" class="mt-4 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-rose-600/25 transition">
+                            Kẻ <span class="vec-sym">AB</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1B. Vector Operations Calculator & 3D Visualizer (Cộng, Trừ, Tích Vô Hướng, Tích Có Hướng) -->
+                <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">2. Phép Toán Hai Vectơ & Góc</span>
+                        <span class="text-[10px] text-slate-400">Tự động dựng 3D</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Vectơ thứ nhất (<span class="vec-sym">u</span>):</label>
+                            <select id="op-vec-1" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-rose-300 font-mono-code font-bold"></select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-0.5">Vectơ thứ hai (<span class="vec-sym">v</span>):</label>
+                            <select id="op-vec-2" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-cyan-300 font-mono-code font-bold"></select>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons for Vector Operations -->
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="performVectorOp('add')" class="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
+                            <span>➕</span> Dựng <span class="vec-sym">u</span> + <span class="vec-sym">v</span>
+                        </button>
+                        <button onclick="performVectorOp('sub')" class="px-2.5 py-1.5 bg-amber-600/20 hover:bg-amber-600/35 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
+                            <span>➖</span> Dựng <span class="vec-sym">u</span> - <span class="vec-sym">v</span>
+                        </button>
+                        <button onclick="performVectorOp('dot')" class="px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/35 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
+                            <span>📐</span> Tích vô hướng & Góc
+                        </button>
+                        <button onclick="performVectorOp('cross')" class="px-2.5 py-1.5 bg-purple-600/20 hover:bg-purple-600/35 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
+                            <span>✖️</span> Pháp tuyến [<span class="vec-sym">u</span>,<span class="vec-sym">v</span>]
+                        </button>
+                    </div>
+
+                    <!-- Live Calculation Result Box for Selected Vectors -->
+                    <div id="vector-op-result" class="bg-slate-900/95 p-2.5 rounded-lg border border-slate-800 text-[11px] font-mono-code space-y-1 text-slate-300">
+                        <div class="text-slate-400 italic text-center py-1">Hãy kẻ ít nhất 2 vectơ để tính tích vô hướng, góc và dựng vectơ tổng.</div>
+                    </div>
+                </div>
+
+                <!-- 1C. Active 3D Vectors List (Reverse, Scale k, Dashed, Delete) -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <h3 class="text-[11px] font-bold text-rose-400 uppercase tracking-wider">Danh Sách Đường Vectơ Đang Hiển Thị</h3>
+                        <button onclick="clearAllVectors()" class="text-[10px] text-rose-400 hover:underline">Xóa hết vectơ</button>
+                    </div>
+                    <div id="vectors-list" class="space-y-1.5">
+                        <!-- Dynamically rendered vector items -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: VERTICES, SEGMENTS & PLANES MANAGER -->
+            <div id="tab-panel-geometry" class="hidden flex-1 overflow-y-auto custom-scroll p-3.5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white uppercase">Quản Lý Điểm & Đoạn Thẳng</span>
+                    <button id="clear-custom-btn" class="px-2 py-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-lg text-[11px] font-semibold transition">
+                        Xóa nét phụ
+                    </button>
+                </div>
+
+                <!-- Quick Add Point / Ratio Point / Coordinate Point -->
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-300 font-medium">Tên điểm tạo tiếp theo:</span>
+                        <input type="text" id="next-point-name" value="M" maxlength="6" class="w-16 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-center text-xs text-yellow-300 font-bold focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button id="open-ratio-modal-btn" class="px-2.5 py-1.5 bg-pink-600/20 hover:bg-pink-600/30 text-pink-300 border border-pink-500/30 rounded-lg text-xs font-semibold transition">
+                            + Điểm tỉ lệ / Độ dài
+                        </button>
+                        <button id="manual-coord-btn" class="px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-semibold transition">
+                            + Nhập tọa độ Oxyz
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Connect 2 Points Form -->
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase">Nối Nhanh Đoạn Thẳng</div>
+                    <div class="flex items-center gap-1.5">
+                        <select id="quick-seg-p1" class="flex-1 px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-semibold"></select>
+                        <span class="text-slate-500">→</span>
+                        <select id="quick-seg-p2" class="flex-1 px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-semibold"></select>
+                        <button id="quick-connect-btn" class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-xs font-bold transition">
+                            Nối
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Drawn Segments & Cross-section Planes List -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <h3 class="text-[11px] font-bold text-yellow-400 uppercase tracking-wider">Đoạn Thẳng & Thiết Diện (<span id="segments-count-badge">0</span>)</h3>
+                        <span class="text-[10px] text-slate-400">Bấm 📏 đổi độ dài</span>
+                    </div>
+                    <div id="segments-list" class="space-y-1.5 max-h-44 overflow-y-auto custom-scroll pr-1"></div>
+                </div>
+
+                <!-- Vertices & Points List -->
+                <div class="pt-2 border-t border-slate-800">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <h3 class="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Danh Sách Đỉnh & Điểm</h3>
+                        <span class="text-[10px] text-slate-400">✏️ Đổi tên | 🗑️ Xóa</span>
+                    </div>
+                    <div id="points-list" class="space-y-1.5 max-h-60 overflow-y-auto custom-scroll pr-1"></div>
+                </div>
+            </div>
+
+            <!-- TAB 3: LIVE FORMULAS & SPATIAL VECTOR HANDBOOK -->
+            <div id="tab-panel-formulas" class="hidden flex-1 overflow-y-auto custom-scroll p-3.5 space-y-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">📐 1. Số Đo Khối Hình Hiện Tại</h2>
+                    </div>
+                    <div id="formula-shape-name" class="text-xs font-bold text-white mb-2"></div>
+                    <div id="live-metrics-box" class="grid grid-cols-3 gap-1.5 mb-2.5"></div>
+                    <div id="formula-content" class="space-y-1.5"></div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 space-y-2">
+                    <h2 class="text-[11px] font-bold text-rose-400 uppercase tracking-wider">🏹 2. Sổ Tay Công Thức Vectơ Không Gian</h2>
+                    <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 space-y-1">
+                        <div class="text-[11px] font-bold text-rose-300">1. Quy tắc 3 điểm & Hiệu 2 vectơ</div>
+                        <div class="font-mono-code text-[11px] text-slate-300">• <span class="vec-sym">AB</span> + <span class="vec-sym">BC</span> = <span class="vec-sym">AC</span></div>
+                        <div class="font-mono-code text-[11px] text-slate-300">• <span class="vec-sym">OA</span> - <span class="vec-sym">OB</span> = <span class="vec-sym">BA</span></div>
+                    </div>
+                    <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 space-y-1">
+                        <div class="text-[11px] font-bold text-amber-300">2. Quy tắc Hình hộp & Trọng tâm G</div>
+                        <div class="font-mono-code text-[11px] text-slate-300">• <span class="vec-sym">AB</span> + <span class="vec-sym">AD</span> + <span class="vec-sym">AA'</span> = <span class="vec-sym">AC'</span></div>
+                        <div class="font-mono-code text-[11px] text-slate-300">• <span class="vec-sym">SA</span> + <span class="vec-sym">SB</span> + <span class="vec-sym">SC</span> = 3<span class="vec-sym">SG</span></div>
+                    </div>
+                    <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 space-y-1">
+                        <div class="text-[11px] font-bold text-cyan-300">3. Tích vô hướng & Góc giữa 2 vectơ</div>
+                        <div class="font-mono-code text-[11px] text-slate-300">• <span class="vec-sym">u</span>·<span class="vec-sym">v</span> = x₁x₂ + y₁y₂ + z₁z₂ = |<span class="vec-sym">u</span>|·|<span class="vec-sym">v</span>|·cos(<span class="vec-sym">u</span>,<span class="vec-sym">v</span>)</div>
+                        <div class="font-mono-code text-[11px] text-emerald-300">• <span class="vec-sym">u</span> ⊥ <span class="vec-sym">v</span> ⇔ <span class="vec-sym">u</span>·<span class="vec-sym">v</span> = 0</div>
+                    </div>
+                    <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 space-y-1">
+                        <div class="text-[11px] font-bold text-purple-300">4. Tích có hướng (Vectơ pháp tuyến)</div>
+                        <div class="font-mono-code text-[11px] text-slate-300">• [<span class="vec-sym">u</span>,<span class="vec-sym">v</span>] = (y₁z₂-z₁y₂; z₁x₂-x₁z₂; x₁y₂-y₁x₂)</div>
+                        <div class="font-mono-code text-[11px] text-slate-300">• S_ΔABC = ½ · |[<span class="vec-sym">AB</span>, <span class="vec-sym">AC</span>]|</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- MODAL 1: Rename Vertex / Point -->
+    <div id="rename-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-80 shadow-2xl">
+            <h3 class="text-sm font-bold text-white mb-1">🏷️ Đặt / Đổi Tên Đỉnh</h3>
+            <p class="text-xs text-slate-400 mb-3">Nhập ký hiệu đỉnh (VD: S, A, A', M, N, H, O, I...)</p>
+            <input type="text" id="rename-input" maxlength="8" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white font-bold focus:outline-none focus:border-blue-500 mb-4" placeholder="Nhập tên đỉnh...">
+            <div class="flex justify-end gap-2">
+                <button id="rename-cancel" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Hủy</button>
+                <button id="rename-save" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold">Lưu Tên</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Create / Edit Point on Edge by Ratio or Exact Length -->
+    <div id="ratio-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-96 shadow-2xl">
+            <h3 class="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                <span class="text-pink-400">📏</span> Điểm Chia Tỉ Lệ / Độ Dài Trên Cạnh
+            </h3>
+            <p class="text-xs text-slate-400 mb-3">Đặt điểm <b id="ratio-pt-label" class="text-yellow-300">M</b> nằm trên đoạn thẳng nối 2 đỉnh:</p>
+            
+            <div class="space-y-3 mb-4">
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="text-[11px] text-slate-400">Tên điểm:</label>
+                        <input type="text" id="ratio-pt-name" value="M" maxlength="6" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-bold">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-400">Từ đỉnh (A):</label>
+                        <select id="ratio-p1-select" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-semibold"></select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-400">Đến đỉnh (B):</label>
+                        <select id="ratio-p2-select" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-semibold"></select>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/90 p-3 rounded-xl border border-slate-800 space-y-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-400">Tổng độ dài cạnh <b id="ratio-edge-name" class="text-blue-400">SA</b>:</span>
+                        <span id="ratio-total-len" class="font-mono-code font-bold text-white">0.00</span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300">Tỉ lệ <span id="ratio-formula-text" class="font-mono-code text-pink-400">k = SM / SA</span>:</span>
+                            <input type="number" id="ratio-k-input" min="0" max="2" step="0.05" value="0.5" class="w-20 px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-right text-xs text-pink-300 font-mono-code font-bold">
+                        </div>
+                        <input type="range" id="ratio-k-slider" min="0" max="1" step="0.01" value="0.5" class="w-full accent-pink-500 cursor-pointer">
+                        <div class="flex gap-1.5 mt-1.5">
+                            <button type="button" onclick="setRatioPreset(0.25)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono-code">1/4</button>
+                            <button type="button" onclick="setRatioPreset(1/3)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono-code">1/3</button>
+                            <button type="button" onclick="setRatioPreset(0.5)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-amber-300 font-mono-code">1/2 (Trung điểm)</button>
+                            <button type="button" onclick="setRatioPreset(2/3)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono-code">2/3</button>
+                            <button type="button" onclick="setRatioPreset(0.75)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono-code">3/4</button>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                        <label class="text-xs text-slate-300">Hoặc nhập độ dài <b id="ratio-subseg-name" class="text-yellow-300">SM</b> =</label>
+                        <input type="number" id="ratio-dist-input" min="0" step="0.1" value="2.0" class="w-28 px-2.5 py-1 bg-slate-900 border border-yellow-500/50 rounded-lg text-right text-xs text-yellow-300 font-mono-code font-bold focus:outline-none focus:border-yellow-400">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button id="ratio-cancel" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Hủy</button>
+                <button id="ratio-save" class="px-4 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-xs font-semibold">Áp Dụng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Edit Segment Length Directly -->
+    <div id="seg-length-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-96 shadow-2xl">
+            <h3 class="text-sm font-bold text-white mb-1">📏 Thay Đổi Độ Dài Đoạn Thẳng <span id="edit-seg-title" class="text-yellow-300">MN</span></h3>
+            <p class="text-xs text-slate-400 mb-3">Nhập độ dài mới cho đoạn thẳng:</p>
+            
+            <div class="space-y-3 mb-4">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <span class="text-xs text-slate-300">Độ dài hiện tại:</span>
+                    <span id="edit-seg-current" class="font-mono-code text-xs font-bold text-slate-400">0.00</span>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-300 block mb-1">Độ dài mới mong muốn (L):</label>
+                    <input type="number" id="edit-seg-input" min="0.1" step="0.1" class="w-full px-3 py-2 bg-slate-950 border border-yellow-500/60 rounded-xl text-sm text-yellow-300 font-mono-code font-bold focus:outline-none focus:border-yellow-400">
+                </div>
+                <div class="flex items-center gap-2 text-[11px] text-slate-300">
+                    <input type="checkbox" id="scale-whole-shape-checkbox" class="rounded bg-slate-800 border-slate-600 text-blue-500">
+                    <label for="scale-whole-shape-checkbox">Co giãn toàn bộ khối hình theo tỉ lệ độ dài này</label>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button id="seg-len-cancel" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Hủy</button>
+                <button id="seg-len-save" class="px-4 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold">Cập Nhật Độ Dài</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: Add Point by Oxyz Coordinates -->
+    <div id="coord-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-80 shadow-2xl">
+            <h3 class="text-sm font-bold text-white mb-1">📍 Thêm Điểm Theo Tọa Độ (x; y; z)</h3>
+            <p class="text-xs text-slate-400 mb-3">Tạo điểm mới trong không gian Oxyz</p>
+            <div class="space-y-2.5 mb-4">
+                <div>
+                    <label class="text-[11px] text-slate-400">Tên điểm:</label>
+                    <input type="text" id="coord-name" value="P" maxlength="6" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-bold">
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="text-[11px] text-rose-400">Hoành độ X:</label>
+                        <input type="number" id="coord-x" value="1.5" step="0.5" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-emerald-400">Cao độ Y:</label>
+                        <input type="number" id="coord-y" value="2.0" step="0.5" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-blue-400">Tung độ Z:</label>
+                        <input type="number" id="coord-z" value="1.5" step="0.5" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button id="coord-cancel" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Hủy</button>
+                <button id="coord-save" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold">Tạo Điểm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: Create Free / Coordinate Vector u = (x; y; z) or Scale Vector -->
+    <div id="free-vec-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-96 shadow-2xl">
+            <h3 class="text-sm font-bold text-white mb-1">🏹 Tạo Vectơ Theo Tọa Độ <span class="vec-sym">u</span> = (x; y; z)</h3>
+            <p class="text-xs text-slate-400 mb-3">Dựng đường vectơ tự do xuất phát từ một đỉnh chọn trước:</p>
+            <div class="space-y-3 mb-4">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[11px] text-slate-400">Điểm đặt gốc:</label>
+                        <select id="free-vec-origin" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-bold"></select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-400">Tên điểm ngọn mới:</label>
+                        <input type="text" id="free-vec-tip-name" value="U" maxlength="6" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-rose-300 font-bold">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="text-[11px] text-rose-400">Tọa độ Δx:</label>
+                        <input type="number" id="free-vec-dx" value="2.0" step="0.5" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono-code">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-emerald-400">Tọa độ Δy:</label>
+                        <input type="number" id="free-vec-dy" value="2.5" step="0.5" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono-code">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-blue-400">Tọa độ Δz:</label>
+                        <input type="number" id="free-vec-dz" value="1.0" step="0.5" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono-code">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('free-vec-modal').classList.add('hidden')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Hủy</button>
+                <button onclick="confirmFreeVectorModal()" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold">Dựng Vectơ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: Scale / Multiply Vector by Scalar k -->
+    <div id="scale-vec-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-80 shadow-2xl">
+            <h3 class="text-sm font-bold text-white mb-1">✖️ Nhân Vectơ Với Số Thực <span class="text-rose-400 font-mono-code">k</span></h3>
+            <p id="scale-vec-desc" class="text-xs text-slate-400 mb-3">Tạo vectơ mới <span class="font-mono-code text-rose-300">k·→AB</span> cùng phương:</p>
+            <div class="space-y-3 mb-4">
+                <div>
+                    <label class="text-xs text-slate-300 block mb-1">Hệ số tỉ lệ <span class="font-mono-code text-rose-400">k</span> (nhập âm để ngược hướng):</label>
+                    <input type="number" id="scale-vec-k" value="1.5" step="0.25" class="w-full px-3 py-2 bg-slate-950 border border-rose-500/60 rounded-xl text-sm text-rose-300 font-mono-code font-bold">
+                </div>
+                <div class="flex gap-1.5">
+                    <button type="button" onclick="document.getElementById('scale-vec-k').value=-1" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-slate-300 font-mono-code">-1 (Vectơ đối)</button>
+                    <button type="button" onclick="document.getElementById('scale-vec-k').value=0.5" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-slate-300 font-mono-code">1/2</button>
+                    <button type="button" onclick="document.getElementById('scale-vec-k').value=2" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-slate-300 font-mono-code">2</button>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('scale-vec-modal').classList.add('hidden')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Hủy</button>
+                <button onclick="confirmScaleVectorModal()" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold">Tạo Vectơ k·<span class="vec-sym">u</span></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * GEOSPACE PRO 3D - SPATIAL GEOMETRY & 3D VECTOR ENGINE
+         * Complete self-contained architecture with 3D Arrow Vectors, Vector Algebra & Parametric Solids.
+         */
+        let scene, camera, renderer, controls;
+        let mainMesh = null, wireframeMesh = null;
+        let axesHelper = null, gridHelper = null;
+        let pointsGroup, segmentsGroup, vectorsGroup, planesGroup;
+        let raycaster, mouse, pointerDownPos;
+        let labelsContainer, mountContainer;
+        let isInitialized = false;
+
+        const CUSTOM_NAMES_POOL = ["M", "N", "P", "Q", "I", "J", "K", "H", "E", "F"];
+
+        const state = {
+            currentTool: 'orbit',
+            currentShape: 'squarePyramid',
+            activeRightTab: 'vectors',
+            showAxes: true,
+            showGrid: true,
+            autoRotate: false,
+            isDashedLine: false,
+             vectorColor: '#f43f5e',
+            showVectorCoords: false,
+            showBaseEdgeLabels: true,
+            faceOpacity: 0.26,
+            customNameIndex: 0,
+            params: {},
+            points: [],
+            segments: [],
+            vectors: [],
+            planes: [],
+            baseEdgeLabels: [],
+            selectedPointIds: [],
+            renamingPointId: null,
+            editingRatioPointId: null,
+            editingSegmentId: null,
+            scalingVectorId: null
+        };
+
+        /**
+         * FALLBACK ORBIT CONTROLS (Guaranteed 3D interaction even offline)
+         */
+        class SimpleOrbitControls {
+            constructor(camera, domElement) {
+                this.camera = camera;
+                this.domElement = domElement;
+                this.target = new THREE.Vector3(0, 0, 0);
+                this.autoRotate = false;
+                this.isDragging = false;
+                this.prevPos = { x: 0, y: 0 };
+                this.spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(this.target));
+
+                domElement.addEventListener('pointerdown', (e) => {
+                    if (e.button === 0) {
+                        this.isDragging = true;
+                        this.prevPos = { x: e.clientX, y: e.clientY };
+                    }
+                });
+                window.addEventListener('pointermove', (e) => {
+                    if (!this.isDragging) return;
+                    const dx = (e.clientX - this.prevPos.x) * 0.008;
+                    const dy = (e.clientY - this.prevPos.y) * 0.008;
+                    this.prevPos = { x: e.clientX, y: e.clientY };
+                    this.spherical.theta -= dx;
+                    this.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.spherical.phi - dy));
+                    this.updateCamera();
+                });
+                window.addEventListener('pointerup', () => { this.isDragging = false; });
+                domElement.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    this.spherical.radius = Math.max(2.5, Math.min(30, this.spherical.radius + e.deltaY * 0.01));
+                    this.updateCamera();
+                }, { passive: false });
+            }
+            updateCamera() {
+                const offset = new THREE.Vector3().setFromSpherical(this.spherical);
+                this.camera.position.copy(this.target).add(offset);
+                this.camera.lookAt(this.target);
+            }
+            update() {
+                if (this.autoRotate && !this.isDragging) {
+                    this.spherical.theta += 0.005;
+                    this.updateCamera();
+                }
+            }
+        }
+
+        function buildIndexedGeometry(verts, indices) {
+            const geo = new THREE.BufferGeometry();
+            const positions = [];
+            verts.forEach(v => positions.push(v.pos.x, v.pos.y, v.pos.z));
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setIndex(indices);
+            geo.computeVertexNormals();
+            return geo;
+        }
+
+        /**
+         * 10 SOLID GEOMETRY SHAPES DATABASE
+         */
+        const shapeDB = {
+            squarePyramid: {
+                name: "Chóp Tứ Giác S.ABCD",
+                defaultParams: { a: 4.0, b: 4.0, h: 4.5, apexMode: 'center' },
+                paramControls: [
+                    { key: 'a', label: 'Cạnh đáy AB (a)', min: 1.0, max: 8.0, step: 0.2 },
+                    { key: 'b', label: 'Cạnh đáy BC (b)', min: 1.0, max: 8.0, step: 0.2 },
+                    { key: 'h', label: 'Chiều cao (h)', min: 1.0, max: 8.0, step: 0.2 },
+                    { key: 'apexMode', label: 'Chân đường cao', type: 'select', options: [
+                        { val: 'center', text: 'Chóp đều / Tâm O (SO ⊥ đáy)' },
+                        { val: 'SA', text: 'Cạnh bên SA ⊥ đáy (H ≡ A)' },
+                        { val: 'midAB', text: 'Mặt bên (SAB) ⊥ đáy (SH ⊥ AB)' }
+                    ]}
+                ],
+                build: (p) => {
+                    const hx = p.a / 2, hz = p.b / 2;
+                    const yBase = -1.5, yTop = yBase + p.h;
+                    let sx = 0, sz = 0;
+                    if (p.apexMode === 'SA') { sx = -hx; sz = -hz; }
+                    else if (p.apexMode === 'midAB') { sx = 0; sz = -hz; }
+
+                    const verts = [
+                        { name: "S", pos: new THREE.Vector3(sx, yTop, sz) },
+                        { name: "A", pos: new THREE.Vector3(-hx, yBase, -hz) },
+                        { name: "B", pos: new THREE.Vector3(hx, yBase, -hz) },
+                        { name: "C", pos: new THREE.Vector3(hx, yBase, hz) },
+                        { name: "D", pos: new THREE.Vector3(-hx, yBase, hz) },
+                        { name: "O", pos: new THREE.Vector3(0, yBase, 0) }
+                    ];
+                    const indices = [0,1,2,  0,2,3,  0,3,4,  0,4,1,  1,3,2,  1,4,3];
+                    const geo = buildIndexedGeometry(verts.slice(0, 5), indices);
+                    const baseEdges = [
+                        { p1: "A", p2: "B", tag: `a=${p.a}` },
+                        { p1: "B", p2: "C", tag: `b=${p.b}` },
+                        { p1: "S", p2: p.apexMode === 'SA' ? "A" : "O", tag: `h=${p.h}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const Sday = p.a * p.b;
+                    const V = (1/3) * Sday * p.h;
+                    const ha = Math.hypot(p.h, p.b / 2);
+                    const hb = Math.hypot(p.h, p.a / 2);
+                    const Sxq = p.a * ha + p.b * hb;
+                    const Stp = Sxq + Sday;
+                    const SA = p.apexMode === 'SA' ? p.h : Math.hypot(p.h, Math.hypot(p.a/2, p.b/2));
+                    return {
+                        V, Sxq, Stp,
+                        formulas: [
+                            { title: "Thể tích V = ⅓ · S_đáy · h", eq: `V = ⅓ · ${Sday.toFixed(2)} · ${p.h} = ${V.toFixed(2)}` },
+                            { title: "Hệ thức Vectơ tâm đáy O", eq: `→SA + →SC = →SB + →SD = 2→SO` },
+                            { title: "Diện tích đáy & Cạnh bên SA", eq: `S_đáy = ${Sday.toFixed(2)} | SA ≈ ${SA.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            triPyramid: {
+                name: "Chóp Tam Giác S.ABC",
+                defaultParams: { a: 4.5, h: 4.2, apexMode: 'SA' },
+                paramControls: [
+                    { key: 'a', label: 'Cạnh đáy đều (a)', min: 1.5, max: 8.0, step: 0.2 },
+                    { key: 'h', label: 'Chiều cao (h)', min: 1.0, max: 8.0, step: 0.2 },
+                    { key: 'apexMode', label: 'Chân đường cao', type: 'select', options: [
+                        { val: 'SA', text: 'SA ⊥ (ABC) (Vuông góc tại A)' },
+                        { val: 'center', text: 'Chóp tam giác đều (SG ⊥ đáy)' }
+                    ]}
+                ],
+                build: (p) => {
+                    const yBase = -1.5, yTop = yBase + p.h;
+                    const hTri = (p.a * Math.sqrt(3)) / 2;
+                    const A = new THREE.Vector3(-p.a / 2, yBase, -hTri / 3);
+                    const B = new THREE.Vector3(p.a / 2, yBase, -hTri / 3);
+                    const C = new THREE.Vector3(0, yBase, (2 * hTri) / 3);
+                    const G = new THREE.Vector3(0, yBase, 0);
+                    const S = p.apexMode === 'SA' ? new THREE.Vector3(A.x, yTop, A.z) : new THREE.Vector3(0, yTop, 0);
+
+                    const verts = [
+                        { name: "S", pos: S },
+                        { name: "A", pos: A },
+                        { name: "B", pos: B },
+                        { name: "C", pos: C },
+                        { name: "G", pos: G }
+                    ];
+                    const indices = [0,1,2,  0,2,3,  0,3,1,  1,3,2];
+                    const geo = buildIndexedGeometry(verts.slice(0, 4), indices);
+                    const baseEdges = [
+                        { p1: "A", p2: "B", tag: `a=${p.a}` },
+                        { p1: "S", p2: p.apexMode === 'SA' ? "A" : "G", tag: `h=${p.h}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const Sday = (p.a * p.a * Math.sqrt(3)) / 4;
+                    const V = (1/3) * Sday * p.h;
+                    const rIn = (p.a * Math.sqrt(3)) / 6;
+                    const Sxq = 3 * (0.5 * p.a * Math.hypot(p.h, rIn));
+                    return {
+                        V, Sxq, Stp: Sxq + Sday,
+                        formulas: [
+                            { title: "Thể tích V = ⅓ · S_{ABC} · h", eq: `S_đáy ≈ ${Sday.toFixed(2)} → V ≈ ${V.toFixed(2)}` },
+                            { title: "Quy tắc Trọng tâm G", eq: "→SA + →SB + →SC = 3→SG" }
+                        ]
+                    };
+                }
+            },
+            cube: {
+                name: "Hình Lập Phương",
+                defaultParams: { a: 4.0 },
+                paramControls: [
+                    { key: 'a', label: 'Độ dài cạnh (a)', min: 1.5, max: 7.5, step: 0.2 }
+                ],
+                build: (p) => {
+                    const h = p.a / 2;
+                    const verts = [
+                        { name: "A",  pos: new THREE.Vector3(-h, -h, -h) },
+                        { name: "B",  pos: new THREE.Vector3(h, -h, -h) },
+                        { name: "C",  pos: new THREE.Vector3(h, -h, h) },
+                        { name: "D",  pos: new THREE.Vector3(-h, -h, h) },
+                        { name: "A'", pos: new THREE.Vector3(-h, h, -h) },
+                        { name: "B'", pos: new THREE.Vector3(h, h, -h) },
+                        { name: "C'", pos: new THREE.Vector3(h, h, h) },
+                        { name: "D'", pos: new THREE.Vector3(-h, h, h) }
+                    ];
+                    const geo = new THREE.BoxGeometry(p.a, p.a, p.a);
+                    const baseEdges = [
+                        { p1: "A", p2: "B", tag: `a=${p.a}` },
+                        { p1: "B", p2: "C", tag: `a=${p.a}` },
+                        { p1: "A", p2: "A'", tag: `a=${p.a}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const V = Math.pow(p.a, 3);
+                    const Sxq = 4 * p.a * p.a;
+                    const Stp = 6 * p.a * p.a;
+                    return {
+                        V, Sxq, Stp,
+                        formulas: [
+                            { title: "Quy tắc Hình hộp", eq: `→AB + →AD + →AA' = →AC' (|→AC'| = a√3 ≈ ${(p.a*Math.sqrt(3)).toFixed(2)})` },
+                            { title: "Thể tích & Diện tích", eq: `V = a³ = ${V.toFixed(2)} | S_{tp} = 6a² = ${Stp.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            boxPrism: {
+                name: "Hình Hộp Chữ Nhật",
+                defaultParams: { a: 4.8, b: 3.4, h: 3.6 },
+                paramControls: [
+                    { key: 'a', label: 'Chiều dài AB (a)', min: 1.5, max: 8.0, step: 0.2 },
+                    { key: 'b', label: 'Chiều rộng BC (b)', min: 1.5, max: 8.0, step: 0.2 },
+                    { key: 'h', label: 'Chiều cao AA\' (h)', min: 1.5, max: 8.0, step: 0.2 }
+                ],
+                build: (p) => {
+                    const ax = p.a / 2, ay = p.h / 2, az = p.b / 2;
+                    const verts = [
+                        { name: "A",  pos: new THREE.Vector3(-ax, -ay, -az) },
+                        { name: "B",  pos: new THREE.Vector3(ax, -ay, -az) },
+                        { name: "C",  pos: new THREE.Vector3(ax, -ay, az) },
+                        { name: "D",  pos: new THREE.Vector3(-ax, -ay, az) },
+                        { name: "A'", pos: new THREE.Vector3(-ax, ay, -az) },
+                        { name: "B'", pos: new THREE.Vector3(ax, ay, -az) },
+                        { name: "C'", pos: new THREE.Vector3(ax, ay, az) },
+                        { name: "D'", pos: new THREE.Vector3(-ax, ay, az) }
+                    ];
+                    const geo = new THREE.BoxGeometry(p.a, p.h, p.b);
+                    const baseEdges = [
+                        { p1: "A", p2: "B", tag: `a=${p.a}` },
+                        { p1: "B", p2: "C", tag: `b=${p.b}` },
+                        { p1: "A", p2: "A'", tag: `h=${p.h}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const V = p.a * p.b * p.h;
+                    const Sxq = 2 * (p.a + p.b) * p.h;
+                    const Stp = Sxq + 2 * p.a * p.b;
+                    const diag = Math.sqrt(p.a*p.a + p.b*p.b + p.h*p.h);
+                    return {
+                        V, Sxq, Stp,
+                        formulas: [
+                            { title: "Độ dài Vectơ đường chéo →AC'", eq: `|→AC'| = √(a²+b²+h²) ≈ ${diag.toFixed(2)}` },
+                            { title: "Thể tích V = a·b·h", eq: `V = ${p.a} · ${p.b} · ${p.h} = ${V.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            rightTetrahedron: {
+                name: "Tứ Diện Vuông O.ABC",
+                defaultParams: { a: 3.8, b: 4.0, h: 3.6 },
+                paramControls: [
+                    { key: 'a', label: 'Cạnh góc vuông OA (a)', min: 1.5, max: 7.5, step: 0.2 },
+                    { key: 'b', label: 'Cạnh góc vuông OB (b)', min: 1.5, max: 7.5, step: 0.2 },
+                    { key: 'h', label: 'Cạnh góc vuông OC (c)', min: 1.5, max: 7.5, step: 0.2 }
+                ],
+                build: (p) => {
+                    const ox = -1.5, oy = -1.5, oz = -1.5;
+                    const verts = [
+                        { name: "O", pos: new THREE.Vector3(ox, oy, oz) },
+                        { name: "A", pos: new THREE.Vector3(ox + p.a, oy, oz) },
+                        { name: "B", pos: new THREE.Vector3(ox, oy, oz + p.b) },
+                        { name: "C", pos: new THREE.Vector3(ox, oy + p.h, oz) }
+                    ];
+                    const indices = [0,1,2,  0,2,3,  0,3,1,  1,3,2];
+                    const geo = buildIndexedGeometry(verts, indices);
+                    const baseEdges = [
+                        { p1: "O", p2: "A", tag: `a=${p.a}` },
+                        { p1: "O", p2: "B", tag: `b=${p.b}` },
+                        { p1: "O", p2: "C", tag: `c=${p.h}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const V = (1/6) * p.a * p.b * p.h;
+                    const Sxq = 0.5 * (p.a*p.b + p.b*p.h + p.h*p.a);
+                    const invH2 = (1/(p.a*p.a)) + (1/(p.b*p.b)) + (1/(p.h*p.h));
+                    const dOH = 1 / Math.sqrt(invH2);
+                    return {
+                        V, Sxq, Stp: Sxq * 1.4,
+                        formulas: [
+                            { title: "3 Vectơ đôi một vuông góc", eq: `→OA·→OB = →OB·→OC = →OC·→OA = 0` },
+                            { title: "Khoảng cách từ O đến (ABC)", eq: `1/OH² = 1/a²+1/b²+1/c² → OH ≈ ${dOH.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            regularTetrahedron: {
+                name: "Tứ Diện Đều ABCD",
+                defaultParams: { a: 4.6 },
+                paramControls: [
+                    { key: 'a', label: 'Độ dài tất cả các cạnh (a)', min: 1.5, max: 8.0, step: 0.2 }
+                ],
+                build: (p) => {
+                    const yBase = -1.5;
+                    const hTri = (p.a * Math.sqrt(3)) / 2;
+                    const hTet = p.a * Math.sqrt(2 / 3);
+                    const verts = [
+                        { name: "A", pos: new THREE.Vector3(0, yBase + hTet, 0) },
+                        { name: "B", pos: new THREE.Vector3(-p.a / 2, yBase, -hTri / 3) },
+                        { name: "C", pos: new THREE.Vector3(p.a / 2, yBase, -hTri / 3) },
+                        { name: "D", pos: new THREE.Vector3(0, yBase, (2 * hTri) / 3) },
+                        { name: "G", pos: new THREE.Vector3(0, yBase, 0) }
+                    ];
+                    const indices = [0,1,2,  0,2,3,  0,3,1,  1,3,2];
+                    const geo = buildIndexedGeometry(verts.slice(0, 4), indices);
+                    const baseEdges = [
+                        { p1: "B", p2: "C", tag: `a=${p.a}` },
+                        { p1: "A", p2: "B", tag: `a=${p.a}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const V = (Math.pow(p.a, 3) * Math.sqrt(2)) / 12;
+                    const Stp = Math.pow(p.a, 2) * Math.sqrt(3);
+                    return {
+                        V, Sxq: Stp * 0.75, Stp,
+                        formulas: [
+                            { title: "Cặp cạnh đối vuông góc", eq: `→AB · →CD = 0 ⇔ AB ⊥ CD` },
+                            { title: "Thể tích tứ diện đều", eq: `V = a³√2/12 ≈ ${V.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            triPrism: {
+                name: "Lăng Trụ Tam Giác",
+                defaultParams: { a: 4.2, h: 3.8 },
+                paramControls: [
+                    { key: 'a', label: 'Cạnh đáy đều (a)', min: 1.5, max: 8.0, step: 0.2 },
+                    { key: 'h', label: 'Chiều cao AA\' (h)', min: 1.5, max: 8.0, step: 0.2 }
+                ],
+                build: (p) => {
+                    const yB = -p.h / 2, yT = p.h / 2;
+                    const hTri = (p.a * Math.sqrt(3)) / 2;
+                    const verts = [
+                        { name: "A",  pos: new THREE.Vector3(-p.a/2, yB, -hTri/3) },
+                        { name: "B",  pos: new THREE.Vector3(p.a/2, yB, -hTri/3) },
+                        { name: "C",  pos: new THREE.Vector3(0, yB, 2*hTri/3) },
+                        { name: "A'", pos: new THREE.Vector3(-p.a/2, yT, -hTri/3) },
+                        { name: "B'", pos: new THREE.Vector3(p.a/2, yT, -hTri/3) },
+                        { name: "C'", pos: new THREE.Vector3(0, yT, 2*hTri/3) }
+                    ];
+                    const indices = [0,2,1,  3,4,5,  0,1,4, 0,4,3,  1,2,5, 1,5,4,  2,0,3, 2,3,5];
+                    const geo = buildIndexedGeometry(verts, indices);
+                    const baseEdges = [
+                        { p1: "A", p2: "B", tag: `a=${p.a}` },
+                        { p1: "A", p2: "A'", tag: `h=${p.h}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const Sday = (p.a * p.a * Math.sqrt(3)) / 4;
+                    const V = Sday * p.h;
+                    const Sxq = 3 * p.a * p.h;
+                    return {
+                        V, Sxq, Stp: Sxq + 2 * Sday,
+                        formulas: [
+                            { title: "Vectơ cạnh bên bằng nhau", eq: `→AA' = →BB' = →CC'` },
+                            { title: "Thể tích V = S_{ABC} · AA'", eq: `V ≈ ${V.toFixed(2)} | S_{xq} = ${Sxq.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            octahedron: {
+                name: "Bát Diện Đều",
+                defaultParams: { a: 4.2 },
+                paramControls: [
+                    { key: 'a', label: 'Độ dài cạnh (a)', min: 1.5, max: 7.5, step: 0.2 }
+                ],
+                build: (p) => {
+                    const h = p.a / 2;
+                    const top = (p.a * Math.sqrt(2)) / 2;
+                    const verts = [
+                        { name: "S",  pos: new THREE.Vector3(0, top, 0) },
+                        { name: "A",  pos: new THREE.Vector3(-h, 0, -h) },
+                        { name: "B",  pos: new THREE.Vector3(h, 0, -h) },
+                        { name: "C",  pos: new THREE.Vector3(h, 0, h) },
+                        { name: "D",  pos: new THREE.Vector3(-h, 0, h) },
+                        { name: "S'", pos: new THREE.Vector3(0, -top, 0) },
+                        { name: "O",  pos: new THREE.Vector3(0, 0, 0) }
+                    ];
+                    const indices = [
+                        0,1,2, 0,2,3, 0,3,4, 0,4,1,
+                        5,2,1, 5,3,2, 5,4,3, 5,1,4
+                    ];
+                    const geo = buildIndexedGeometry(verts.slice(0, 6), indices);
+                    const baseEdges = [{ p1: "A", p2: "B", tag: `a=${p.a}` }];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const V = (Math.pow(p.a, 3) * Math.sqrt(2)) / 3;
+                    const Stp = 2 * Math.pow(p.a, 2) * Math.sqrt(3);
+                    return {
+                        V, Sxq: Stp, Stp,
+                        formulas: [
+                            { title: "Thể tích Bát diện đều", eq: `V = (a³√2)/3 ≈ ${V.toFixed(2)}` },
+                            { title: "Diện tích toàn phần", eq: `S_{tp} = 2a²√3 ≈ ${Stp.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            cylinder: {
+                name: "Hình Trụ Tròn",
+                defaultParams: { r: 2.0, h: 4.0 },
+                paramControls: [
+                    { key: 'r', label: 'Bán kính đáy (R)', min: 0.8, max: 4.5, step: 0.1 },
+                    { key: 'h', label: 'Chiều cao OO\' (h)', min: 1.0, max: 8.0, step: 0.2 }
+                ],
+                build: (p) => {
+                    const geo = new THREE.CylinderGeometry(p.r, p.r, p.h, 36);
+                    const verts = [
+                        { name: "O'", pos: new THREE.Vector3(0, p.h/2, 0) },
+                        { name: "O",  pos: new THREE.Vector3(0, -p.h/2, 0) },
+                        { name: "A",  pos: new THREE.Vector3(p.r, -p.h/2, 0) },
+                        { name: "A'", pos: new THREE.Vector3(p.r, p.h/2, 0) },
+                        { name: "B",  pos: new THREE.Vector3(-p.r, -p.h/2, 0) }
+                    ];
+                    const baseEdges = [
+                        { p1: "O", p2: "A", tag: `R=${p.r}` },
+                        { p1: "A", p2: "A'", tag: `h=${p.h}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    const V = Math.PI * p.r * p.r * p.h;
+                    const Sxq = 2 * Math.PI * p.r * p.h;
+                    const Stp = Sxq + 2 * Math.PI * p.r * p.r;
+                    return {
+                        V, Sxq, Stp,
+                        formulas: [
+                            { title: "Thể tích V = π·R²·h", eq: `V ≈ ${V.toFixed(2)}` },
+                            { title: "Diện tích xung quanh 2πRh", eq: `S_{xq} ≈ ${Sxq.toFixed(2)}` }
+                        ]
+                    };
+                }
+            },
+            cone: {
+                name: "Hình Nón & Mặt Cầu",
+                defaultParams: { r: 2.2, h: 4.2, mode: 'cone' },
+                paramControls: [
+                    { key: 'r', label: 'Bán kính (R)', min: 0.8, max: 4.5, step: 0.1 },
+                    { key: 'h', label: 'Chiều cao SO (h)', min: 1.0, max: 8.0, step: 0.2 },
+                    { key: 'mode', label: 'Loại khối tròn xoay', type: 'select', options: [
+                        { val: 'cone', text: 'Hình Nón Tròn Xoay' },
+                        { val: 'sphere', text: 'Mặt Cầu Tâm O Bán Kính R' }
+                    ]}
+                ],
+                build: (p) => {
+                    if (p.mode === 'sphere') {
+                        const geo = new THREE.SphereGeometry(p.r, 32, 24);
+                        const verts = [
+                            { name: "O", pos: new THREE.Vector3(0, 0, 0) },
+                            { name: "A", pos: new THREE.Vector3(p.r, 0, 0) },
+                            { name: "B", pos: new THREE.Vector3(-p.r, 0, 0) },
+                            { name: "S", pos: new THREE.Vector3(0, p.r, 0) }
+                        ];
+                        const baseEdges = [{ p1: "O", p2: "A", tag: `R=${p.r}` }];
+                        return { geo, vertices: verts, baseEdges };
+                    }
+                    const geo = new THREE.ConeGeometry(p.r, p.h, 36);
+                    const verts = [
+                        { name: "S", pos: new THREE.Vector3(0, p.h/2, 0) },
+                        { name: "O", pos: new THREE.Vector3(0, -p.h/2, 0) },
+                        { name: "A", pos: new THREE.Vector3(p.r, -p.h/2, 0) },
+                        { name: "B", pos: new THREE.Vector3(-p.r, -p.h/2, 0) }
+                    ];
+                    const baseEdges = [
+                        { p1: "O", p2: "A", tag: `R=${p.r}` },
+                        { p1: "S", p2: "O", tag: `h=${p.h}` }
+                    ];
+                    return { geo, vertices: verts, baseEdges };
+                },
+                calculate: (p) => {
+                    if (p.mode === 'sphere') {
+                        const V = (4/3) * Math.PI * Math.pow(p.r, 3);
+                        const S = 4 * Math.PI * p.r * p.r;
+                        return {
+                            V, Sxq: S, Stp: S,
+                            formulas: [
+                                { title: "Thể tích khối cầu V = 4/3·πR³", eq: `V ≈ ${V.toFixed(2)}` },
+                                { title: "Diện tích mặt cầu S = 4πR²", eq: `S ≈ ${S.toFixed(2)}` }
+                            ]
+                        };
+                    }
+                    const l = Math.hypot(p.r, p.h);
+                    const V = (1/3) * Math.PI * p.r * p.r * p.h;
+                    const Sxq = Math.PI * p.r * l;
+                    const Stp = Sxq + Math.PI * p.r * p.r;
+                    return {
+                        V, Sxq, Stp,
+                        formulas: [
+                            { title: "Đường sinh l = √(R² + h²)", eq: `l ≈ ${l.toFixed(2)}` },
+                            { title: "Thể tích & S_xq = πRl", eq: `V ≈ ${V.toFixed(2)} | S_{xq} ≈ ${Sxq.toFixed(2)}` }
+                        ]
+                    };
+                }
+            }
+        };
+
+        /**
+         * INITIALIZE 3D ENGINE
+         */
+        function init() {
+            if (isInitialized) return;
+            isInitialized = true;
+
+            mountContainer = document.getElementById('webgl-mount');
+            labelsContainer = document.getElementById('labels-container');
+            const canvasWrap = document.getElementById('canvas-container');
+
+            const width = canvasWrap.clientWidth || (window.innerWidth - 700);
+            const height = canvasWrap.clientHeight || (window.innerHeight - 56);
+
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(7.2, 5.4, 8.2);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            mountContainer.innerHTML = '';
+            mountContainer.appendChild(renderer.domElement);
+
+            if (typeof THREE.OrbitControls === 'function') {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.07;
+            } else {
+                controls = new SimpleOrbitControls(camera, renderer.domElement);
+            }
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight1.position.set(10, 16, 12);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x60a5fa, 0.45);
+            dirLight2.position.set(-10, -8, -10);
+            scene.add(dirLight2);
+
+            // Helpers
+            gridHelper = new THREE.GridHelper(14, 14, 0x334155, 0x1e293b);
+            gridHelper.position.y = -1.51;
+            scene.add(gridHelper);
+
+            axesHelper = new THREE.AxesHelper(5.5);
+            axesHelper.visible = state.showAxes;
+            scene.add(axesHelper);
+
+            // Geometry & Vector Groups
+            pointsGroup = new THREE.Group();
+            segmentsGroup = new THREE.Group();
+            vectorsGroup = new THREE.Group();
+            planesGroup = new THREE.Group();
+            scene.add(pointsGroup);
+            scene.add(segmentsGroup);
+            scene.add(vectorsGroup);
+            scene.add(planesGroup);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            pointerDownPos = new THREE.Vector2();
+
+            renderer.domElement.addEventListener('pointerdown', onPointerDown);
+            renderer.domElement.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && state.currentTool === 'plane' && state.selectedPointIds.length >= 3) {
+                    finishCurrentPlane();
+                } else if (e.key === 'Escape') {
+                    clearSelection();
+                }
+            });
+
+            if (typeof ResizeObserver !== 'undefined') {
+                const ro = new ResizeObserver(() => onWindowResize());
+                ro.observe(canvasWrap);
+            }
+
+            buildShapeButtons();
+            bindUIControls();
+            loadShape('squarePyramid');
+            animate();
+        }
+
+        /**
+         * SWITCH RIGHT SIDEBAR TABS
+         */
+        function switchRightTab(tabName) {
+            state.activeRightTab = tabName;
+            ['vectors', 'geometry', 'formulas'].forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const panel = document.getElementById(`tab-panel-${t}`);
+                if (t === tabName) {
+                    btn.classList.add('active');
+                    btn.classList.remove('text-slate-400');
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('active');
+                    btn.classList.add('text-slate-400');
+                    panel.classList.add('hidden');
+                }
+            });
+        }
+
+        /**
+         * LOAD A 3D SHAPE AND SPAWN VERTICES
+         */
+        function loadShape(shapeKey) {
+            state.currentShape = shapeKey;
+            document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-${shapeKey}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            if (mainMesh) {
+                scene.remove(mainMesh);
+                if (mainMesh.geometry) mainMesh.geometry.dispose();
+            }
+            if (wireframeMesh) {
+                scene.remove(wireframeMesh);
+                if (wireframeMesh.geometry) wireframeMesh.geometry.dispose();
+            }
+            clearAllGeometryData();
+
+            const shapeData = shapeDB[shapeKey];
+            state.params = { ...shapeData.defaultParams };
+            const built = shapeData.build(state.params);
+
+            const mat = new THREE.MeshPhysicalMaterial({
+                color: 0x3b82f6,
+                metalness: 0.1,
+                roughness: 0.3,
+                transparent: true,
+                opacity: state.faceOpacity,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            mainMesh = new THREE.Mesh(built.geo, mat);
+            scene.add(mainMesh);
+
+            const edgesGeo = new THREE.EdgesGeometry(built.geo, 12);
+            const edgesMat = new THREE.LineBasicMaterial({
+                color: 0x93c5fd,
+                transparent: true,
+                opacity: 0.85
+            });
+            wireframeMesh = new THREE.LineSegments(edgesGeo, edgesMat);
+            scene.add(wireframeMesh);
+
+            built.vertices.forEach(v => {
+                createPointObject(v.pos, v.name, true, null);
+            });
+
+            rebuildBaseEdgeLabels(built.baseEdges || []);
+
+            state.customNameIndex = 0;
+            updateNextDefaultPointName();
+            buildDimensionControlsUI(shapeKey);
+            updateFormulasAndMetricsUI(shapeKey);
+            renderManagerLists();
+        }
+
+        /**
+         * BUILD 3D VECTOR MESH (CYLINDER SHAFT + CONE ARROWHEAD)
+         */
+        function build3DVectorArrowGroup(p1Pos, p2Pos, colorHex, isDashed, vectorId) {
+            const group = new THREE.Group();
+            const dir = new THREE.Vector3().subVectors(p2Pos, p1Pos);
+            const len = dir.length();
+            if (len < 0.001) return group;
+
+            const normDir = dir.clone().normalize();
+            const headLen = Math.min(0.42, Math.max(0.22, len * 0.18));
+            const headRadius = 0.13;
+            const shaftLen = Math.max(0.01, len - headLen);
+
+            // 1. Arrowhead Cone placed right at p2Pos
+            const coneGeo = new THREE.ConeGeometry(headRadius, headLen, 20);
+            const coneMat = new THREE.MeshBasicMaterial({ color: colorHex, depthTest: false });
+            const coneMesh = new THREE.Mesh(coneGeo, coneMat);
+            const coneCenter = p2Pos.clone().addScaledVector(normDir, -headLen / 2);
+            coneMesh.position.copy(coneCenter);
+            coneMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normDir);
+            coneMesh.renderOrder = 998;
+            coneMesh.userData = { vectorId };
+            group.add(coneMesh);
+
+            // 2. Shaft (Solid 3D Cylinder or Dashed Line + Invisible Hit Cylinder)
+            const shaftEnd = p1Pos.clone().addScaledVector(normDir, shaftLen);
+            const shaftCenter = new THREE.Vector3().addVectors(p1Pos, shaftEnd).multiplyScalar(0.5);
+
+            if (isDashed) {
+                const lineGeo = new THREE.BufferGeometry().setFromPoints([p1Pos, shaftEnd]);
+                const lineMat = new THREE.LineDashedMaterial({
+                    color: colorHex, dashSize: 0.22, gapSize: 0.14, depthTest: false
+                });
+                const dashedLine = new THREE.Line(lineGeo, lineMat);
+                dashedLine.computeLineDistances();
+                dashedLine.renderOrder = 997;
+                dashedLine.userData = { vectorId };
+                group.add(dashedLine);
+            } else {
+                const cylGeo = new THREE.CylinderGeometry(0.042, 0.042, shaftLen, 14);
+                const cylMat = new THREE.MeshBasicMaterial({ color: colorHex, depthTest: false });
+                const cylMesh = new THREE.Mesh(cylGeo, cylMat);
+                cylMesh.position.copy(shaftCenter);
+                cylMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normDir);
+                cylMesh.renderOrder = 997;
+                cylMesh.userData = { vectorId };
+                group.add(cylMesh);
+            }
+
+            // 3. Origin Ring Highlight at Start Point p1Pos
+            const ringGeo = new THREE.SphereGeometry(0.075, 12, 12);
+            const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, depthTest: false });
+            const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+            ringMesh.position.copy(p1Pos);
+            ringMesh.renderOrder = 998;
+            ringMesh.userData = { vectorId };
+            group.add(ringMesh);
+
+            group.userData = { vectorId };
+            return group;
+        }
+
+        /**
+         * CREATE 3D VECTOR OBJECT BETWEEN TWO POINTS
+         */
+        function createVectorObject(p1Id, p2Id, options = {}) {
+            if (p1Id === p2Id) {
+                showToast("Điểm đầu và điểm cuối của vectơ phải khác nhau!");
+                return null;
+            }
+            const p1 = state.points.find(p => p.id === p1Id);
+            const p2 = state.points.find(p => p.id === p2Id);
+            if (!p1 || !p2) return null;
+
+            const existing = state.vectors.find(v => v.p1Id === p1Id && v.p2Id === p2Id);
+            if (existing) {
+                showToast(`Vectơ →${p1.name}${p2.name} đã tồn tại!`);
+                return existing;
+            }
+
+            const id = 'vec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const color = options.color || state.vectorColor || '#f43f5e';
+            const isDashed = options.isDashed !== undefined ? options.isDashed : state.isDashedLine;
+            const customTag = options.customTag || null;
+
+            const arrowGroup = build3DVectorArrowGroup(p1.pos, p2.pos, color, isDashed, id);
+            vectorsGroup.add(arrowGroup);
+
+            const coords = new THREE.Vector3().subVectors(p2.pos, p1.pos);
+            const length = coords.length();
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'vector-label';
+            labelEl.style.borderColor = color;
+            labelEl.title = `Click để xem thông tin hoặc đảo chiều Vectơ ${p1.name}${p2.name}`;
+            labelEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (state.currentTool === 'delete') {
+                    deleteVectorById(id);
+                } else {
+                    reverseVectorById(id);
+                }
+            });
+            labelsContainer.appendChild(labelEl);
+
+            const vecObj = {
+                id, p1Id, p2Id, color, isDashed, length, coords, customTag, arrowGroup, labelEl
+            };
+            updateVectorLabelContent(vecObj);
+            state.vectors.push(vecObj);
+
+            renderManagerLists();
+            updateVectorOpComparison();
+            return vecObj;
+        }
+
+        function updateVectorLabelContent(vecObj) {
+            const p1 = state.points.find(p => p.id === vecObj.p1Id);
+            const p2 = state.points.find(p => p.id === vecObj.p2Id);
+            if (!p1 || !p2 || !vecObj.labelEl) return;
+
+            vecObj.coords = new THREE.Vector3().subVectors(p2.pos, p1.pos);
+            vecObj.length = vecObj.coords.length();
+
+            const coordStr = state.showVectorCoords
+                ? ` (${vecObj.coords.x.toFixed(1)};${vecObj.coords.y.toFixed(1)};${vecObj.coords.z.toFixed(1)})`
+                : ` = ${vecObj.length.toFixed(2)}`;
+
+            const prefix = vecObj.customTag ? `<span class="text-amber-300 mr-1">${vecObj.customTag}:</span>` : '';
+            vecObj.labelEl.innerHTML = `${prefix}<span class="vec-sym">${p1.name}${p2.name}</span><span class="text-slate-200">${coordStr}</span>`;
+        }
+
+        /**
+         * REVERSE, SCALE & DELETE VECTORS
+         */
+        function reverseVectorById(vecId) {
+            const vec = state.vectors.find(v => v.id === vecId);
+            if (!vec) return;
+            const tmp = vec.p1Id;
+            vec.p1Id = vec.p2Id;
+            vec.p2Id = tmp;
+
+            const p1 = state.points.find(p => p.id === vec.p1Id);
+            const p2 = state.points.find(p => p.id === vec.p2Id);
+            if (p1 && p2) {
+                vectorsGroup.remove(vec.arrowGroup);
+                vec.arrowGroup = build3DVectorArrowGroup(p1.pos, p2.pos, vec.color, vec.isDashed, vec.id);
+                vectorsGroup.add(vec.arrowGroup);
+                updateVectorLabelContent(vec);
+                showToast(`Đã đảo chiều thành vectơ đối →${p1.name}${p2.name}`);
+            }
+            renderManagerLists();
+            updateVectorOpComparison();
+        }
+
+        function toggleVectorDashed(vecId) {
+            const vec = state.vectors.find(v => v.id === vecId);
+            if (!vec) return;
+            vec.isDashed = !vec.isDashed;
+            const p1 = state.points.find(p => p.id === vec.p1Id);
+            const p2 = state.points.find(p => p.id === vec.p2Id);
+            if (p1 && p2) {
+                vectorsGroup.remove(vec.arrowGroup);
+                vec.arrowGroup = build3DVectorArrowGroup(p1.pos, p2.pos, vec.color, vec.isDashed, vec.id);
+                vectorsGroup.add(vec.arrowGroup);
+            }
+            renderManagerLists();
+        }
+
+        function deleteVectorById(vecId, notify = true) {
+            const idx = state.vectors.findIndex(v => v.id === vecId);
+            if (idx === -1) return;
+            const vec = state.vectors[idx];
+            vectorsGroup.remove(vec.arrowGroup);
+            if (vec.labelEl) vec.labelEl.remove();
+            state.vectors.splice(idx, 1);
+            if (notify) showToast("Đã xóa đường vectơ");
+            renderManagerLists();
+            updateVectorOpComparison();
+        }
+
+        function clearAllVectors() {
+            state.vectors.map(v => v.id).forEach(id => deleteVectorById(id, false));
+            showToast("Đã xóa toàn bộ các đường vectơ.");
+        }
+
+        function openScaleVectorModal(vecId) {
+            const vec = state.vectors.find(v => v.id === vecId);
+            if (!vec) return;
+            state.scalingVectorId = vecId;
+            const p1 = state.points.find(p => p.id === vec.p1Id);
+            const p2 = state.points.find(p => p.id === vec.p2Id);
+            document.getElementById('scale-vec-desc').innerHTML = `Tạo vectơ mới <b class="text-rose-300 font-mono-code">k · →${p1.name}${p2.name}</b> xuất phát từ đỉnh <b>${p1.name}</b>:`;
+            document.getElementById('scale-vec-modal').classList.remove('hidden');
+        }
+
+        function confirmScaleVectorModal() {
+            const vec = state.vectors.find(v => v.id === state.scalingVectorId);
+            if (!vec) return;
+            const k = parseFloat(document.getElementById('scale-vec-k').value);
+            if (isNaN(k) || Math.abs(k) < 0.05) {
+                showToast("Hệ số k phải khác 0!");
+                return;
+            }
+            const p1 = state.points.find(p => p.id === vec.p1Id);
+            const p2 = state.points.find(p => p.id === vec.p2Id);
+            if (!p1 || !p2) return;
+
+            const dir = new THREE.Vector3().subVectors(p2.pos, p1.pos).multiplyScalar(k);
+            const newTipPos = p1.pos.clone().add(dir);
+            const tipName = getRequestedPointName();
+            const tipPt = createPointObject(newTipPos, tipName, false, {
+                type: 'ratio', p1Id: p1.id, p2Id: p2.id, ratio: k
+            });
+
+            createVectorObject(p1.id, tipPt.id, {
+                color: '#a855f7',
+                customTag: `${k}→${p1.name}${p2.name}`
+            });
+
+            document.getElementById('scale-vec-modal').classList.add('hidden');
+            state.scalingVectorId = null;
+            showToast(`Đã dựng vectơ ${k}·→${p1.name}${p2.name} = →${p1.name}${tipPt.name}`);
+        }
+
+        /**
+         * FREE / COORDINATE VECTOR MODAL
+         */
+        function openFreeVectorModal() {
+            const sel = document.getElementById('free-vec-origin');
+            sel.innerHTML = '';
+            state.points.forEach(pt => {
+                sel.innerHTML += `<option value="${pt.id}">${pt.name}</option>`;
+            });
+            document.getElementById('free-vec-tip-name').value = getRequestedPointName();
+            document.getElementById('free-vec-modal').classList.remove('hidden');
+        }
+
+        function confirmFreeVectorModal() {
+            const originId = document.getElementById('free-vec-origin').value;
+            const originPt = state.points.find(p => p.id === originId);
+            if (!originPt) return;
+
+            const dx = parseFloat(document.getElementById('free-vec-dx').value) || 0;
+            const dy = parseFloat(document.getElementById('free-vec-dy').value) || 0;
+            const dz = parseFloat(document.getElementById('free-vec-dz').value) || 0;
+            if (Math.hypot(dx, dy, dz) < 0.05) {
+                showToast("Vectơ-không có độ dài bằng 0, hãy nhập tọa độ khác 0!");
+                return;
+            }
+
+            const tipName = document.getElementById('free-vec-tip-name').value.trim() || 'U';
+            const tipPos = originPt.pos.clone().add(new THREE.Vector3(dx, dy, dz));
+            const tipPt = createPointObject(tipPos, tipName, false, null);
+
+            createVectorObject(originPt.id, tipPt.id, { color: '#10b981' });
+            document.getElementById('free-vec-modal').classList.add('hidden');
+            showToast(`Đã dựng →${originPt.name}${tipPt.name} = (${dx}; ${dy}; ${dz})`);
+        }
+
+        /**
+         * VECTOR OPERATIONS & RULES ENGINE (ADD, SUB, DOT PRODUCT, CROSS PRODUCT)
+         */
+        function updateVectorOpComparison() {
+            const box = document.getElementById('vector-op-result');
+            const sel1 = document.getElementById('op-vec-1');
+            const sel2 = document.getElementById('op-vec-2');
+            if (!sel1 || !sel2) return;
+
+            const v1 = state.vectors.find(v => v.id === sel1.value);
+            const v2 = state.vectors.find(v => v.id === sel2.value);
+            if (!v1 || !v2) {
+                box.innerHTML = `<div class="text-slate-400 italic text-center py-1">Hãy kẻ ít nhất 1-2 vectơ để xem tọa độ, tích vô hướng và góc.</div>`;
+                return;
+            }
+
+            const p1a = state.points.find(p => p.id === v1.p1Id);
+            const p1b = state.points.find(p => p.id === v1.p2Id);
+            const p2a = state.points.find(p => p.id === v2.p1Id);
+            const p2b = state.points.find(p => p.id === v2.p2Id);
+
+            const u = new THREE.Vector3().subVectors(p1b.pos, p1a.pos);
+            const v = new THREE.Vector3().subVectors(p2b.pos, p2a.pos);
+
+            const dot = u.dot(v);
+            const magU = u.length();
+            const magV = v.length();
+            const cosVal = (magU * magV > 0.0001) ? Math.max(-1, Math.min(1, dot / (magU * magV))) : 1;
+            const angleDeg = THREE.MathUtils.radToDeg(Math.acos(cosVal));
+            const cross = new THREE.Vector3().crossVectors(u, v);
+
+            let relationBadge = '';
+            if (Math.abs(dot) < 0.03) {
+                relationBadge = `<span class="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/40 text-[10px]">Vuông góc (⊥)</span>`;
+            } else if (cross.length() < 0.03) {
+                relationBadge = `<span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded border border-amber-500/40 text-[10px]">Cùng phương (∥)</span>`;
+            }
+
+            box.innerHTML = `
+                <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                    <span class="text-rose-300 font-bold">→${p1a.name}${p1b.name} = (${u.x.toFixed(1)}; ${u.y.toFixed(1)}; ${u.z.toFixed(1)})</span>
+                    <span class="text-slate-400">|u|=${magU.toFixed(2)}</span>
+                </div>
+                <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                    <span class="text-cyan-300 font-bold">→${p2a.name}${p2b.name} = (${v.x.toFixed(1)}; ${v.y.toFixed(1)}; ${v.z.toFixed(1)})</span>
+                    <span class="text-slate-400">|v|=${magV.toFixed(2)}</span>
+                </div>
+                <div class="flex items-center justify-between pt-0.5">
+                    <span>Tích vô hướng <b class="text-yellow-300">→u · →v = ${dot.toFixed(2)}</b></span>
+                    ${relationBadge}
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>Góc (→u, →v) = <b class="text-emerald-400">${angleDeg.toFixed(1)}°</b></span>
+                    <span class="text-slate-400">cos = ${cosVal.toFixed(3)}</span>
+                </div>
+                <div class="text-purple-300 truncate">
+                    [→u, →v] = (${cross.x.toFixed(1)}; ${cross.y.toFixed(1)}; ${cross.z.toFixed(1)})
+                </div>
+            `;
+        }
+
+        function performVectorOp(opType) {
+            const sel1 = document.getElementById('op-vec-1');
+            const sel2 = document.getElementById('op-vec-2');
+            const v1 = state.vectors.find(v => v.id === sel1.value);
+            const v2 = state.vectors.find(v => v.id === sel2.value);
+
+            if (!v1 || !v2) {
+                showToast("Hãy tạo ít nhất 2 vectơ trước khi thực hiện phép toán!");
+                return;
+            }
+
+            const p1a = state.points.find(p => p.id === v1.p1Id);
+            const p1b = state.points.find(p => p.id === v1.p2Id);
+            const p2a = state.points.find(p => p.id === v2.p1Id);
+            const p2b = state.points.find(p => p.id === v2.p2Id);
+
+            const u = new THREE.Vector3().subVectors(p1b.pos, p1a.pos);
+            const v = new THREE.Vector3().subVectors(p2b.pos, p2a.pos);
+
+            if (opType === 'dot') {
+                updateVectorOpComparison();
+                const dot = u.dot(v);
+                const deg = THREE.MathUtils.radToDeg(u.angleTo(v));
+                showToast(`📐 →${p1a.name}${p1b.name} · →${p2a.name}${p2b.name} = ${dot.toFixed(2)} | Góc = ${deg.toFixed(1)}°`);
+                return;
+            }
+
+            if (opType === 'add') {
+                // Rule 1: 3-Point Chasles Rule if end of v1 == start of v2 (AB + BC = AC)
+                if (v1.p2Id === v2.p1Id) {
+                    createVectorObject(v1.p1Id, v2.p2Id, {
+                        color: '#10b981',
+                        customTag: `→${p1a.name}${p1b.name}+→${p2a.name}${p2b.name}`
+                    });
+                    showToast(`Quy tắc 3 điểm: →${p1a.name}${p1b.name} + →${p2a.name}${p2b.name} = →${p1a.name}${p2b.name}`);
+                    return;
+                }
+
+                // Rule 2: Parallelogram Rule starting at p1a
+                const sumVec = new THREE.Vector3().addVectors(u, v);
+                const targetPos = p1a.pos.clone().add(sumVec);
+
+                // Snap to existing vertex if it matches (e.g. AB + AD = AC on a rectangle/parallelogram)
+                let targetPt = state.points.find(pt => pt.pos.distanceTo(targetPos) < 0.2);
+                if (!targetPt) {
+                    const name = getRequestedPointName();
+                    targetPt = createPointObject(targetPos, name, false, null);
+                }
+
+                // Draw helper parallelogram dashed lines
+                createSegmentObject(p1b.id, targetPt.id, true);
+                if (v1.p1Id === v2.p1Id) {
+                    createSegmentObject(p2b.id, targetPt.id, true);
+                }
+
+                createVectorObject(p1a.id, targetPt.id, {
+                    color: '#10b981',
+                    customTag: `→${p1a.name}${p1b.name}+→${p2a.name}${p2b.name}`
+                });
+                showToast(`Quy tắc Hình bình hành: →${p1a.name}${p1b.name} + →${p2a.name}${p2b.name} = →${p1a.name}${targetPt.name}`);
+                return;
+            }
+
+            if (opType === 'sub') {
+                // If shared origin (OA - OB = BA)
+                if (v1.p1Id === v2.p1Id) {
+                    createVectorObject(v2.p2Id, v1.p2Id, {
+                        color: '#f59e0b',
+                        customTag: `→${p1a.name}${p1b.name}-→${p2a.name}${p2b.name}`
+                    });
+                    showToast(`Quy tắc Hiệu 2 vectơ chung gốc: →${p1a.name}${p1b.name} - →${p2a.name}${p2b.name} = →${p2b.name}${p1b.name}`);
+                    return;
+                }
+
+                const diffVec = new THREE.Vector3().subVectors(u, v);
+                const targetPos = p1a.pos.clone().add(diffVec);
+                let targetPt = state.points.find(pt => pt.pos.distanceTo(targetPos) < 0.2);
+                if (!targetPt) {
+                    targetPt = createPointObject(targetPos, getRequestedPointName(), false, null);
+                }
+                createVectorObject(p1a.id, targetPt.id, {
+                    color: '#f59e0b',
+                    customTag: `→u-→v`
+                });
+                showToast(`Đã dựng vectơ hiệu →${p1a.name}${targetPt.name} = →${p1a.name}${p1b.name} - →${p2a.name}${p2b.name}`);
+                return;
+            }
+
+            if (opType === 'cross') {
+                const cross = new THREE.Vector3().crossVectors(u, v);
+                if (cross.length() < 0.05) {
+                    showToast("Hai vectơ cùng phương nên tích có hướng bằng Vectơ-không!");
+                    return;
+                }
+                // Scale normal vector for clean 3D visualization
+                const visualNormal = cross.clone().normalize().multiplyScalar(2.6);
+                const targetPos = p1a.pos.clone().add(visualNormal);
+                const tipPt = createPointObject(targetPos, "N", false, null);
+                createVectorObject(p1a.id, tipPt.id, {
+                    color: '#a855f7',
+                    customTag: `[→${p1a.name}${p1b.name},→${p2a.name}${p2b.name}]`
+                });
+                showToast(`Đã dựng Vectơ pháp tuyến [→u, →v] vuông góc với cả 2 vectơ!`);
+            }
+        }
+
+        /**
+         * INTERACTIVE PRESET VECTOR RULES DEMONSTRATIONS
+         */
+        function runVectorPreset(presetKey) {
+            switchRightTab('vectors');
+            clearAllVectors();
+
+            if (presetKey === 'threePoints') {
+                const S = state.points.find(p => p.name === 'S') || state.points[0];
+                const A = state.points.find(p => p.name === 'A') || state.points[1];
+                const B = state.points.find(p => p.name === 'B') || state.points[2];
+                if (!S || !A || !B) return;
+
+                createVectorObject(S.id, A.id, { color: '#f43f5e' });
+                createVectorObject(A.id, B.id, { color: '#38bdf8' });
+                createVectorObject(S.id, B.id, { color: '#10b981', customTag: `→${S.name}${A.name}+→${A.name}${B.name}` });
+                showToast(`Quy tắc 3 điểm: →${S.name}${A.name} + →${A.name}${B.name} = →${S.name}${B.name}`);
+            } 
+            else if (presetKey === 'parallelogram') {
+                let A = state.points.find(p => p.name === 'A');
+                let B = state.points.find(p => p.name === 'B');
+                let C = state.points.find(p => p.name === 'C');
+                let D = state.points.find(p => p.name === 'D');
+
+                if (!A || !B || !C || !D) {
+                    loadShape('squarePyramid');
+                    A = state.points.find(p => p.name === 'A');
+                    B = state.points.find(p => p.name === 'B');
+                    C = state.points.find(p => p.name === 'C');
+                    D = state.points.find(p => p.name === 'D');
+                }
+                createVectorObject(A.id, B.id, { color: '#f43f5e' });
+                createVectorObject(A.id, D.id, { color: '#38bdf8' });
+                createVectorObject(A.id, C.id, { color: '#10b981', isDashed: true, customTag: '→AB+→AD' });
+                showToast("Quy tắc Hình bình hành: →AB + →AD = →AC");
+            }
+            else if (presetKey === 'boxRule') {
+                if (state.currentShape !== 'cube' && state.currentShape !== 'boxPrism') {
+                    loadShape('cube');
+                }
+                const A = state.points.find(p => p.name === 'A');
+                const B = state.points.find(p => p.name === 'B');
+                const D = state.points.find(p => p.name === 'D');
+                const Ap = state.points.find(p => p.name === "A'");
+                const Cp = state.points.find(p => p.name === "C'");
+                if (!A || !B || !D || !Ap || !Cp) return;
+
+                createVectorObject(A.id, B.id, { color: '#f43f5e' });
+                createVectorObject(A.id, D.id, { color: '#38bdf8' });
+                createVectorObject(A.id, Ap.id, { color: '#eab308' });
+                createVectorObject(A.id, Cp.id, { color: '#10b981', isDashed: true, customTag: "→AB+→AD+→AA'" });
+                showToast("Quy tắc Hình hộp: →AB + →AD + →AA' = →AC'");
+            }
+            else if (presetKey === 'centroidRule') {
+                if (state.currentShape !== 'triPyramid' && state.currentShape !== 'squarePyramid') {
+                    loadShape('triPyramid');
+                }
+                const S = state.points.find(p => p.name === 'S');
+                const A = state.points.find(p => p.name === 'A');
+                const B = state.points.find(p => p.name === 'B');
+                const C = state.points.find(p => p.name === 'C');
+                const G = state.points.find(p => p.name === 'G' || p.name === 'O');
+                if (!S || !A || !B || !C || !G) return;
+
+                createVectorObject(S.id, A.id, { color: '#f43f5e' });
+                createVectorObject(S.id, B.id, { color: '#38bdf8' });
+                createVectorObject(S.id, C.id, { color: '#eab308' });
+                createVectorObject(S.id, G.id, { color: '#10b981', isDashed: true, customTag: `Tâm ${G.name}` });
+                showToast(`Hệ thức Vectơ: →SA + →SB + →SC = 3→S${G.name}`);
+            }
+        }
+
+        /**
+         * REAL-TIME PARAMETRIC DIMENSION UPDATE
+         */
+        function updateShapeDimensions() {
+            const shapeData = shapeDB[state.currentShape];
+            if (!shapeData) return;
+
+            const built = shapeData.build(state.params);
+
+            if (mainMesh) {
+                mainMesh.geometry.dispose();
+                mainMesh.geometry = built.geo;
+            }
+            if (wireframeMesh) {
+                wireframeMesh.geometry.dispose();
+                wireframeMesh.geometry = new THREE.EdgesGeometry(built.geo, 12);
+            }
+
+            const existingBaseNames = state.points.filter(p => p.isBase).map(p => p.name);
+            const newBaseNames = built.vertices.map(v => v.name);
+            if (existingBaseNames.join(',') !== newBaseNames.join(',')) {
+                loadShape(state.currentShape);
+                return;
+            }
+
+            built.vertices.forEach(vDef => {
+                const pt = state.points.find(p => p.isBase && p.name === vDef.name);
+                if (pt) {
+                    pt.pos.copy(vDef.pos);
+                    pt.mesh.position.copy(vDef.pos);
+                }
+            });
+
+            recomputeDependentGeometries();
+            rebuildBaseEdgeLabels(built.baseEdges || []);
+            updateFormulasAndMetricsUI(state.currentShape);
+            renderManagerLists();
+            updateVectorOpComparison();
+        }
+
+        function recomputeDependentGeometries() {
+            // 1. Update constrained points
+            state.points.forEach(pt => {
+                if (pt.constraint && (pt.constraint.type === 'ratio' || pt.constraint.type === 'midpoint')) {
+                    const p1 = state.points.find(p => p.id === pt.constraint.p1Id);
+                    const p2 = state.points.find(p => p.id === pt.constraint.p2Id);
+                    if (p1 && p2) {
+                        const k = pt.constraint.type === 'midpoint' ? 0.5 : pt.constraint.ratio;
+                        pt.pos.lerpVectors(p1.pos, p2.pos, k);
+                        pt.mesh.position.copy(pt.pos);
+                    }
+                }
+            });
+
+            // 2. Update segments
+            state.segments.forEach(seg => {
+                const p1 = state.points.find(p => p.id === seg.p1Id);
+                const p2 = state.points.find(p => p.id === seg.p2Id);
+                if (p1 && p2) {
+                    seg.lineMesh.geometry.dispose();
+                    seg.lineMesh.geometry = new THREE.BufferGeometry().setFromPoints([p1.pos, p2.pos]);
+                    if (seg.isDashed) seg.lineMesh.computeLineDistances();
+                    seg.length = p1.pos.distanceTo(p2.pos);
+                    if (seg.labelEl) {
+                        seg.labelEl.innerText = `${p1.name}${p2.name} = ${seg.length.toFixed(2)}`;
+                    }
+                }
+            });
+
+            // 3. Update 3D vectors
+            state.vectors.forEach(vec => {
+                const p1 = state.points.find(p => p.id === vec.p1Id);
+                const p2 = state.points.find(p => p.id === vec.p2Id);
+                if (p1 && p2) {
+                    vectorsGroup.remove(vec.arrowGroup);
+                    vec.arrowGroup = build3DVectorArrowGroup(p1.pos, p2.pos, vec.color, vec.isDashed, vec.id);
+                    vectorsGroup.add(vec.arrowGroup);
+                    updateVectorLabelContent(vec);
+                }
+            });
+
+            // 4. Update cross-section planes
+            state.planes.forEach(pl => {
+                const pts = pl.pointIds.map(id => state.points.find(p => p.id === id)).filter(Boolean);
+                if (pts.length >= 3) {
+                    const positions = [];
+                    let area = 0;
+                    for (let i = 1; i < pts.length - 1; i++) {
+                        const a = pts[0].pos, b = pts[i].pos, c = pts[i + 1].pos;
+                        positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+                        const ab = new THREE.Vector3().subVectors(b, a);
+                        const ac = new THREE.Vector3().subVectors(c, a);
+                        area += ab.cross(ac).length() * 0.5;
+                    }
+                    pl.mesh.geometry.dispose();
+                    const geo = new THREE.BufferGeometry();
+                    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    geo.computeVertexNormals();
+                    pl.mesh.geometry = geo;
+                    pl.area = area;
+                    pl.name = `(${pts.map(p => p.name).join('')})`;
+                }
+            });
+        }
+
+        function rebuildBaseEdgeLabels(baseEdges) {
+            state.baseEdgeLabels.forEach(item => item.el.remove());
+            state.baseEdgeLabels = [];
+
+            baseEdges.forEach(edge => {
+                const el = document.createElement('div');
+                el.className = 'base-edge-label';
+                el.innerText = edge.tag;
+                el.style.display = state.showBaseEdgeLabels ? 'block' : 'none';
+                labelsContainer.appendChild(el);
+                state.baseEdgeLabels.push({ p1Name: edge.p1, p2Name: edge.p2, tag: edge.tag, el });
+            });
+        }
+
+        /**
+         * CREATE VERTEX / POINT OBJECT
+         */
+        function createPointObject(position, name, isBase = false, constraint = null) {
+            const id = 'pt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            
+            const sphereGeo = new THREE.SphereGeometry(isBase ? 0.11 : 0.13, 18, 18);
+            const sphereMat = new THREE.MeshBasicMaterial({
+                color: isBase ? 0x38bdf8 : (constraint ? 0xf472b6 : 0xfacc15),
+                depthTest: false
+            });
+            const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+            mesh.position.copy(position);
+            mesh.renderOrder = 999;
+            mesh.userData = { pointId: id };
+            pointsGroup.add(mesh);
+
+            const labelEl = document.createElement('div');
+            labelEl.className = `vertex-label ${isBase ? '' : (constraint ? 'ratio-pt' : 'custom-pt')}`;
+            labelEl.innerText = name;
+            labelEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handlePointInteraction(id);
+            });
+
+            labelsContainer.appendChild(labelEl);
+
+            const ptObj = { id, name, pos: position.clone(), isBase, mesh, labelEl, constraint };
+            state.points.push(ptObj);
+            renderManagerLists();
+            return ptObj;
+        }
+
+        /**
+         * CREATE SEGMENT (SOLID OR DASHED)
+         */
+        function createSegmentObject(p1Id, p2Id, isDashed = state.isDashedLine) {
+            if (p1Id === p2Id) return;
+            const exists = state.segments.find(s => 
+                (s.p1Id === p1Id && s.p2Id === p2Id) || (s.p1Id === p2Id && s.p2Id === p1Id)
+            );
+            if (exists) return exists;
+
+            const p1 = state.points.find(p => p.id === p1Id);
+            const p2 = state.points.find(p => p.id === p2Id);
+            if (!p1 || !p2) return;
+
+            const id = 'seg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const geometry = new THREE.BufferGeometry().setFromPoints([p1.pos, p2.pos]);
+            
+            let lineMesh;
+            if (isDashed) {
+                const mat = new THREE.LineDashedMaterial({
+                    color: 0xfde047, dashSize: 0.22, gapSize: 0.14, depthTest: false
+                });
+                lineMesh = new THREE.Line(geometry, mat);
+                lineMesh.computeLineDistances();
+            } else {
+                const mat = new THREE.LineBasicMaterial({
+                    color: 0xfde047, depthTest: false
+                });
+                lineMesh = new THREE.Line(geometry, mat);
+            }
+            lineMesh.renderOrder = 995;
+            lineMesh.userData = { segmentId: id };
+            segmentsGroup.add(lineMesh);
+
+            const length = p1.pos.distanceTo(p2.pos);
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'segment-label';
+            labelEl.innerText = `${p1.name}${p2.name} = ${length.toFixed(2)}`;
+            labelEl.title = `Click để thay đổi độ dài đoạn ${p1.name}${p2.name}`;
+            labelEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openSegmentLengthModal(id);
+            });
+            labelsContainer.appendChild(labelEl);
+
+            const segObj = { id, p1Id, p2Id, isDashed, length, lineMesh, labelEl };
+            state.segments.push(segObj);
+            renderManagerLists();
+            return segObj;
+        }
+
+        /**
+         * RENAME & DELETE FUNCTIONS
+         */
+        function openRenameModal(pointId) {
+            const pt = state.points.find(p => p.id === pointId);
+            if (!pt) return;
+            state.renamingPointId = pointId;
+            const modal = document.getElementById('rename-modal');
+            const input = document.getElementById('rename-input');
+            input.value = pt.name;
+            modal.classList.remove('hidden');
+            setTimeout(() => { input.focus(); input.select(); }, 50);
+        }
+
+        function confirmRenamePoint() {
+            const input = document.getElementById('rename-input');
+            const newName = input.value.trim();
+            if (!newName || !state.renamingPointId) return;
+
+            const pt = state.points.find(p => p.id === state.renamingPointId);
+            if (pt) {
+                const oldName = pt.name;
+                pt.name = newName;
+                pt.labelEl.innerText = newName;
+                recomputeDependentGeometries();
+                showToast(`Đã đổi tên đỉnh "${oldName}" thành "${newName}"`);
+                renderManagerLists();
+                updateVectorOpComparison();
+            }
+            document.getElementById('rename-modal').classList.add('hidden');
+            state.renamingPointId = null;
+        }
+
+        function deletePointById(pointId) {
+            const idx = state.points.findIndex(p => p.id === pointId);
+            if (idx === -1) return;
+            const pt = state.points[idx];
+
+            state.segments.filter(s => s.p1Id === pointId || s.p2Id === pointId).forEach(s => deleteSegmentById(s.id, false));
+            state.vectors.filter(v => v.p1Id === pointId || v.p2Id === pointId).forEach(v => deleteVectorById(v.id, false));
+            state.planes.filter(pl => pl.pointIds.includes(pointId)).forEach(pl => deletePlaneById(pl.id, false));
+
+            pointsGroup.remove(pt.mesh);
+            if (pt.mesh.geometry) pt.mesh.geometry.dispose();
+            if (pt.mesh.material) pt.mesh.material.dispose();
+            if (pt.labelEl) pt.labelEl.remove();
+
+            state.points.splice(idx, 1);
+            state.selectedPointIds = state.selectedPointIds.filter(id => id !== pointId);
+
+            showToast(`Đã xóa điểm ${pt.name}`);
+            renderManagerLists();
+        }
+
+        function deleteSegmentById(segId, notify = true) {
+            const idx = state.segments.findIndex(s => s.id === segId);
+            if (idx === -1) return;
+            const seg = state.segments[idx];
+
+            segmentsGroup.remove(seg.lineMesh);
+            if (seg.lineMesh.geometry) seg.lineMesh.geometry.dispose();
+            if (seg.lineMesh.material) seg.lineMesh.material.dispose();
+            if (seg.labelEl) seg.labelEl.remove();
+
+            state.segments.splice(idx, 1);
+            if (notify) showToast("Đã xóa đoạn thẳng");
+            renderManagerLists();
+        }
+
+        function toggleSegmentDashed(segId) {
+            const seg = state.segments.find(s => s.id === segId);
+            if (!seg) return;
+            const p1 = state.points.find(p => p.id === seg.p1Id);
+            const p2 = state.points.find(p => p.id === seg.p2Id);
+            if (!p1 || !p2) return;
+
+            segmentsGroup.remove(seg.lineMesh);
+            seg.lineMesh.material.dispose();
+
+            seg.isDashed = !seg.isDashed;
+            const geo = new THREE.BufferGeometry().setFromPoints([p1.pos, p2.pos]);
+            if (seg.isDashed) {
+                seg.lineMesh = new THREE.Line(geo, new THREE.LineDashedMaterial({
+                    color: 0xfde047, dashSize: 0.22, gapSize: 0.14, depthTest: false
+                }));
+                seg.lineMesh.computeLineDistances();
+            } else {
+                seg.lineMesh = new THREE.Line(geo, new THREE.LineBasicMaterial({
+                    color: 0xfde047, depthTest: false
+                }));
+            }
+            seg.lineMesh.renderOrder = 995;
+            seg.lineMesh.userData = { segmentId: seg.id };
+            segmentsGroup.add(seg.lineMesh);
+            renderManagerLists();
+        }
+
+        /**
+         * CROSS-SECTION PLANE (THIẾT DIỆN)
+         */
+        function finishCurrentPlane() {
+            if (state.selectedPointIds.length < 3) {
+                showToast("Cần chọn ít nhất 3 điểm để dựng thiết diện!");
+                return;
+            }
+            const pts = state.selectedPointIds.map(id => state.points.find(p => p.id === id)).filter(Boolean);
+            if (pts.length < 3) return;
+
+            const id = 'pl_' + Date.now();
+            const positions = [];
+            let area = 0;
+
+            for (let i = 1; i < pts.length - 1; i++) {
+                const a = pts[0].pos, b = pts[i].pos, c = pts[i + 1].pos;
+                positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+                const ab = new THREE.Vector3().subVectors(b, a);
+                const ac = new THREE.Vector3().subVectors(c, a);
+                area += ab.cross(ac).length() * 0.5;
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.computeVertexNormals();
+
+            const mat = new THREE.MeshBasicMaterial({
+                color: 0xa855f7,
+                transparent: true,
+                opacity: 0.45,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.renderOrder = 990;
+            planesGroup.add(mesh);
+
+            for (let i = 0; i < pts.length; i++) {
+                const next = pts[(i + 1) % pts.length];
+                createSegmentObject(pts[i].id, next.id, false);
+            }
+
+            const planeName = `(${pts.map(p => p.name).join('')})`;
+            state.planes.push({ id, name: planeName, pointIds: [...state.selectedPointIds], area, mesh });
+            showToast(`Đã tạo mặt phẳng ${planeName} - Diện tích S = ${area.toFixed(2)}`);
+            clearSelection();
+            renderManagerLists();
+        }
+
+        function deletePlaneById(planeId, notify = true) {
+            const idx = state.planes.findIndex(pl => pl.id === planeId);
+            if (idx === -1) return;
+            const pl = state.planes[idx];
+            planesGroup.remove(pl.mesh);
+            pl.mesh.geometry.dispose();
+            pl.mesh.material.dispose();
+            state.planes.splice(idx, 1);
+            if (notify) showToast(`Đã xóa mặt phẳng ${pl.name}`);
+            renderManagerLists();
+        }
+
+        /**
+         * RATIO POINT & SEGMENT LENGTH MODALS
+         */
+        function openRatioPointModal(defaultP1Id = null, defaultP2Id = null, existingPointId = null) {
+            if (state.points.length < 2) return;
+            state.editingRatioPointId = existingPointId;
+            const modal = document.getElementById('ratio-modal');
+            const p1Sel = document.getElementById('ratio-p1-select');
+            const p2Sel = document.getElementById('ratio-p2-select');
+            const nameInput = document.getElementById('ratio-pt-name');
+
+            p1Sel.innerHTML = '';
+            p2Sel.innerHTML = '';
+            state.points.forEach(pt => {
+                if (pt.id === existingPointId) return;
+                p1Sel.innerHTML += `<option value="${pt.id}">${pt.name}</option>`;
+                p2Sel.innerHTML += `<option value="${pt.id}">${pt.name}</option>`;
+            });
+
+            if (existingPointId) {
+                const pt = state.points.find(p => p.id === existingPointId);
+                if (pt && pt.constraint) {
+                    nameInput.value = pt.name;
+                    p1Sel.value = pt.constraint.p1Id;
+                    p2Sel.value = pt.constraint.p2Id;
+                    const k = pt.constraint.ratio ?? 0.5;
+                    document.getElementById('ratio-k-slider').value = k;
+                    document.getElementById('ratio-k-input').value = k.toFixed(2);
+                }
+            } else {
+                nameInput.value = getRequestedPointName();
+                p1Sel.value = defaultP1Id || state.points[0].id;
+                p2Sel.value = defaultP2Id || (state.points[1] ? state.points[1].id : state.points[0].id);
+                document.getElementById('ratio-k-slider').value = 0.5;
+                document.getElementById('ratio-k-input').value = 0.5;
+            }
+
+            syncRatioModalFields('k');
+            modal.classList.remove('hidden');
+        }
+
+        function syncRatioModalFields(source) {
+            const p1Id = document.getElementById('ratio-p1-select').value;
+            const p2Id = document.getElementById('ratio-p2-select').value;
+            const ptName = document.getElementById('ratio-pt-name').value.trim() || 'M';
+            const p1 = state.points.find(p => p.id === p1Id);
+            const p2 = state.points.find(p => p.id === p2Id);
+            if (!p1 || !p2) return;
+
+            const totalLen = p1.pos.distanceTo(p2.pos);
+            document.getElementById('ratio-pt-label').innerText = ptName;
+            document.getElementById('ratio-edge-name').innerText = `${p1.name}${p2.name}`;
+            document.getElementById('ratio-total-len').innerText = totalLen.toFixed(2);
+            document.getElementById('ratio-formula-text').innerText = `k = ${p1.name}${ptName} / ${p1.name}${p2.name}`;
+            document.getElementById('ratio-subseg-name').innerText = `${p1.name}${ptName}`;
+
+            const slider = document.getElementById('ratio-k-slider');
+            const kInput = document.getElementById('ratio-k-input');
+            const distInput = document.getElementById('ratio-dist-input');
+
+            if (source === 'slider') {
+                const k = parseFloat(slider.value);
+                kInput.value = k.toFixed(2);
+                distInput.value = (k * totalLen).toFixed(2);
+            } else if (source === 'k') {
+                const k = Math.max(0, parseFloat(kInput.value) || 0);
+                slider.value = Math.min(1, k);
+                distInput.value = (k * totalLen).toFixed(2);
+            } else if (source === 'dist') {
+                const d = Math.max(0, parseFloat(distInput.value) || 0);
+                const k = totalLen > 0.0001 ? (d / totalLen) : 0;
+                kInput.value = k.toFixed(3);
+                slider.value = Math.min(1, k);
+            }
+        }
+
+        function setRatioPreset(kVal) {
+            document.getElementById('ratio-k-input').value = kVal.toFixed(3);
+            syncRatioModalFields('k');
+        }
+
+        function saveRatioPointModal() {
+            const p1Id = document.getElementById('ratio-p1-select').value;
+            const p2Id = document.getElementById('ratio-p2-select').value;
+            if (p1Id === p2Id) {
+                showToast("Vui lòng chọn 2 đỉnh khác nhau!");
+                return;
+            }
+            const p1 = state.points.find(p => p.id === p1Id);
+            const p2 = state.points.find(p => p.id === p2Id);
+            const k = parseFloat(document.getElementById('ratio-k-input').value) || 0.5;
+            const name = document.getElementById('ratio-pt-name').value.trim() || 'M';
+
+            const pos = new THREE.Vector3().lerpVectors(p1.pos, p2.pos, k);
+            const constraint = { type: 'ratio', p1Id, p2Id, ratio: k };
+
+            if (state.editingRatioPointId) {
+                const pt = state.points.find(p => p.id === state.editingRatioPointId);
+                if (pt) {
+                    pt.name = name;
+                    pt.labelEl.innerText = name;
+                    pt.constraint = constraint;
+                    recomputeDependentGeometries();
+                    showToast(`Đã cập nhật ${name} (${p1.name}${name} = ${(k * p1.pos.distanceTo(p2.pos)).toFixed(2)})`);
+                }
+            } else {
+                const newPt = createPointObject(pos, name, false, constraint);
+                showToast(`Đã tạo điểm ${newPt.name} trên ${p1.name}${p2.name}`);
+            }
+
+            document.getElementById('ratio-modal').classList.add('hidden');
+            state.editingRatioPointId = null;
+            renderManagerLists();
+        }
+
+        function openSegmentLengthModal(segId) {
+            const seg = state.segments.find(s => s.id === segId);
+            if (!seg) return;
+            const p1 = state.points.find(p => p.id === seg.p1Id);
+            const p2 = state.points.find(p => p.id === seg.p2Id);
+            if (!p1 || !p2) return;
+
+            state.editingSegmentId = segId;
+            document.getElementById('edit-seg-title').innerText = `${p1.name}${p2.name}`;
+            document.getElementById('edit-seg-current').innerText = seg.length.toFixed(2);
+            document.getElementById('edit-seg-input').value = seg.length.toFixed(2);
+
+            const scaleCheck = document.getElementById('scale-whole-shape-checkbox');
+            scaleCheck.checked = (p1.isBase && p2.isBase);
+
+            document.getElementById('seg-length-modal').classList.remove('hidden');
+            setTimeout(() => {
+                const inp = document.getElementById('edit-seg-input');
+                inp.focus();
+                inp.select();
+            }, 50);
+        }
+
+        function saveSegmentLengthModal() {
+            const seg = state.segments.find(s => s.id === state.editingSegmentId);
+            if (!seg) return;
+            const p1 = state.points.find(p => p.id === seg.p1Id);
+            const p2 = state.points.find(p => p.id === seg.p2Id);
+            if (!p1 || !p2) return;
+
+            const newLen = parseFloat(document.getElementById('edit-seg-input').value);
+            if (isNaN(newLen) || newLen <= 0.05) return;
+
+            const currentLen = p1.pos.distanceTo(p2.pos);
+            if (currentLen < 0.0001) return;
+
+            const scaleWhole = document.getElementById('scale-whole-shape-checkbox').checked;
+
+            if (scaleWhole) {
+                const factor = newLen / currentLen;
+                ['a', 'b', 'h', 'r'].forEach(k => {
+                    if (typeof state.params[k] === 'number') {
+                        state.params[k] = parseFloat((state.params[k] * factor).toFixed(2));
+                    }
+                });
+                state.points.forEach(pt => {
+                    if (!pt.isBase && !pt.constraint) {
+                        pt.pos.multiplyScalar(factor);
+                        pt.mesh.position.copy(pt.pos);
+                    }
+                });
+                buildDimensionControlsUI(state.currentShape);
+                updateShapeDimensions();
+                showToast(`Đã co giãn hình để ${p1.name}${p2.name} = ${newLen.toFixed(2)}`);
+            } else {
+                const anchor = (!p2.isBase || p1.isBase) ? p1 : p2;
+                const target = (anchor === p1) ? p2 : p1;
+                const dir = new THREE.Vector3().subVectors(target.pos, anchor.pos).normalize();
+                target.pos.copy(anchor.pos).addScaledVector(dir, newLen);
+                target.mesh.position.copy(target.pos);
+
+                if (target.constraint && target.constraint.type === 'ratio') {
+                    const cp1 = state.points.find(p => p.id === target.constraint.p1Id);
+                    const cp2 = state.points.find(p => p.id === target.constraint.p2Id);
+                    if (cp1 && cp2 && cp1.pos.distanceTo(cp2.pos) > 0) {
+                        target.constraint.ratio = cp1.pos.distanceTo(target.pos) / cp1.pos.distanceTo(cp2.pos);
+                    }
+                } else {
+                    target.constraint = null;
+                }
+                recomputeDependentGeometries();
+                renderManagerLists();
+                showToast(`Đã cập nhật độ dài ${p1.name}${p2.name} = ${newLen.toFixed(2)}`);
+            }
+
+            document.getElementById('seg-length-modal').classList.add('hidden');
+            state.editingSegmentId = null;
+        }
+
+        /**
+         * POINT CLICK INTERACTION DISPATCHER
+         */
+        function handlePointInteraction(pointId) {
+            const pt = state.points.find(p => p.id === pointId);
+            if (!pt) return;
+
+            if (state.currentTool === 'rename') {
+                openRenameModal(pointId);
+                return;
+            }
+            if (state.currentTool === 'delete') {
+                deletePointById(pointId);
+                return;
+            }
+            if (state.currentTool === 'vector') {
+                toggleSelectPoint(pointId);
+                if (state.selectedPointIds.length === 2) {
+                    const p1 = state.points.find(p => p.id === state.selectedPointIds[0]);
+                    const p2 = state.points.find(p => p.id === state.selectedPointIds[1]);
+                    if (p1 && p2) {
+                        createVectorObject(p1.id, p2.id);
+                        showToast(`🏹 Đã dựng đường Vectơ →${p1.name}${p2.name}`);
+                        switchRightTab('vectors');
+                    }
+                    clearSelection();
+                }
+                return;
+            }
+            if (state.currentTool === 'midpoint') {
+                toggleSelectPoint(pointId);
+                if (state.selectedPointIds.length === 2) {
+                    const p1 = state.points.find(p => p.id === state.selectedPointIds[0]);
+                    const p2 = state.points.find(p => p.id === state.selectedPointIds[1]);
+                    if (p1 && p2) {
+                        const midPos = new THREE.Vector3().addVectors(p1.pos, p2.pos).multiplyScalar(0.5);
+                        const name = getRequestedPointName();
+                        const newPt = createPointObject(midPos, name, false, {
+                            type: 'midpoint', p1Id: p1.id, p2Id: p2.id, ratio: 0.5
+                        });
+                        showToast(`Đã tạo trung điểm ${newPt.name} của ${p1.name}${p2.name}`);
+                    }
+                    clearSelection();
+                }
+                return;
+            }
+            if (state.currentTool === 'ratio') {
+                toggleSelectPoint(pointId);
+                if (state.selectedPointIds.length === 2) {
+                    const id1 = state.selectedPointIds[0];
+                    const id2 = state.selectedPointIds[1];
+                    clearSelection();
+                    openRatioPointModal(id1, id2, null);
+                }
+                return;
+            }
+            if (state.currentTool === 'segment') {
+                toggleSelectPoint(pointId);
+                if (state.selectedPointIds.length === 2) {
+                    const p1 = state.points.find(p => p.id === state.selectedPointIds[0]);
+                    const p2 = state.points.find(p => p.id === state.selectedPointIds[1]);
+                    createSegmentObject(p1.id, p2.id, state.isDashedLine);
+                    showToast(`Đã kẻ đoạn thẳng ${p1.name}${p2.name}`);
+                    clearSelection();
+                }
+                return;
+            }
+            if (state.currentTool === 'plane') {
+                toggleSelectPoint(pointId);
+                if (state.selectedPointIds.length >= 3) {
+                    document.getElementById('finish-plane-btn').classList.remove('hidden');
+                }
+                return;
+            }
+            if (state.currentTool === 'angle') {
+                toggleSelectPoint(pointId);
+                if (state.selectedPointIds.length === 3) {
+                    const pA = state.points.find(p => p.id === state.selectedPointIds[0]);
+                    const pB = state.points.find(p => p.id === state.selectedPointIds[1]);
+                    const pC = state.points.find(p => p.id === state.selectedPointIds[2]);
+                    if (pA && pB && pC) {
+                        const vBA = new THREE.Vector3().subVectors(pA.pos, pB.pos).normalize();
+                        const vBC = new THREE.Vector3().subVectors(pC.pos, pB.pos).normalize();
+                        const deg = THREE.MathUtils.radToDeg(vBA.angleTo(vBC));
+                        showToast(`📐 Góc ∠${pA.name}${pB.name}${pC.name} = ${deg.toFixed(1)}°`);
+                    }
+                    clearSelection();
+                }
+                return;
+            }
+
+            if (state.currentTool === 'orbit') {
+                openRenameModal(pointId);
+            }
+        }
+
+        function toggleSelectPoint(pointId) {
+            const idx = state.selectedPointIds.indexOf(pointId);
+            if (idx > -1) state.selectedPointIds.splice(idx, 1);
+            else state.selectedPointIds.push(pointId);
+            updateSelectionHighlight();
+        }
+
+        function clearSelection() {
+            state.selectedPointIds = [];
+            updateSelectionHighlight();
+            document.getElementById('finish-plane-btn').classList.add('hidden');
+        }
+
+        function updateSelectionHighlight() {
+            state.points.forEach(p => {
+                if (state.selectedPointIds.includes(p.id)) p.labelEl.classList.add('selected-pt');
+                else p.labelEl.classList.remove('selected-pt');
+            });
+        }
+
+        /**
+         * 3D RAYCASTING ON CANVAS
+         */
+        function onPointerDown(e) {
+            pointerDownPos.set(e.clientX, e.clientY);
+        }
+
+        function onPointerUp(e) {
+            if (e.target !== renderer.domElement) return;
+            if (Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y) > 5) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            // 1. Check Vertex Hit
+            const ptHits = raycaster.intersectObjects(pointsGroup.children);
+            if (ptHits.length > 0) {
+                const hitPointId = ptHits[0].object.userData.pointId;
+                if (hitPointId) {
+                    handlePointInteraction(hitPointId);
+                    return;
+                }
+            }
+
+            // 2. Check Delete on Vector or Segment
+            if (state.currentTool === 'delete') {
+                const vecHits = raycaster.intersectObjects(vectorsGroup.children, true);
+                if (vecHits.length > 0) {
+                    const vecId = vecHits[0].object.userData.vectorId;
+                    if (vecId) {
+                        deleteVectorById(vecId);
+                        return;
+                    }
+                }
+                const segHits = raycaster.intersectObjects(segmentsGroup.children);
+                if (segHits.length > 0) {
+                    const segId = segHits[0].object.userData.segmentId;
+                    if (segId) {
+                        deleteSegmentById(segId);
+                        return;
+                    }
+                }
+            }
+
+            // 3. Check Point Placement on Shape Surface
+            if (state.currentTool === 'point' && mainMesh) {
+                const hits = raycaster.intersectObject(mainMesh);
+                if (hits.length > 0) {
+                    let targetPos = hits[0].point.clone();
+                    let snappedNote = "";
+                    let constraint = null;
+
+                    for (let i = 0; i < state.points.length; i++) {
+                        for (let j = i + 1; j < state.points.length; j++) {
+                            const mid = new THREE.Vector3().addVectors(state.points[i].pos, state.points[j].pos).multiplyScalar(0.5);
+                            if (targetPos.distanceTo(mid) < 0.35) {
+                                targetPos.copy(mid);
+                                snappedNote = ` (Trung điểm ${state.points[i].name}${state.points[j].name})`;
+                                constraint = { type: 'midpoint', p1Id: state.points[i].id, p2Id: state.points[j].id, ratio: 0.5 };
+                                break;
+                            }
+                        }
+                    }
+
+                    const ptName = getRequestedPointName();
+                    createPointObject(targetPos, ptName, false, constraint);
+                    showToast(`Đã chấm điểm ${ptName}${snappedNote}`);
+                }
+            }
+        }
+
+        function getRequestedPointName() {
+            const input = document.getElementById('next-point-name');
+            let chosen = input.value.trim();
+            if (!chosen || state.points.some(p => p.name === chosen)) {
+                chosen = CUSTOM_NAMES_POOL[state.customNameIndex % CUSTOM_NAMES_POOL.length];
+                if (state.points.some(p => p.name === chosen)) {
+                    chosen += (Math.floor(state.customNameIndex / CUSTOM_NAMES_POOL.length) + 1);
+                }
+            }
+            state.customNameIndex++;
+            updateNextDefaultPointName();
+            return chosen;
+        }
+
+        function updateNextDefaultPointName() {
+            const input = document.getElementById('next-point-name');
+            let candidate = CUSTOM_NAMES_POOL[state.customNameIndex % CUSTOM_NAMES_POOL.length];
+            if (state.points.some(p => p.name === candidate)) {
+                candidate += (Math.floor(state.customNameIndex / CUSTOM_NAMES_POOL.length) + 1);
+            }
+            input.value = candidate;
+        }
+
+        /**
+         * UI BUILDERS & LIST RENDERERS
+         */
+        function buildShapeButtons() {
+            const container = document.getElementById('shape-selector');
+            container.innerHTML = '';
+            for (const [key, data] of Object.entries(shapeDB)) {
+                const btn = document.createElement('button');
+                btn.id = `btn-${key}`;
+                btn.className = "shape-btn text-left text-[11px] font-semibold py-2 px-2.5 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-300 hover:bg-slate-800 transition truncate";
+                btn.innerText = data.name;
+                btn.onclick = () => loadShape(key);
+                container.appendChild(btn);
+            }
+        }
+
+        function buildDimensionControlsUI(shapeKey) {
+            const shapeData = shapeDB[shapeKey];
+            const box = document.getElementById('dimensions-controls');
+            box.innerHTML = '';
+
+            shapeData.paramControls.forEach(ctrl => {
+                const wrap = document.createElement('div');
+                if (ctrl.type === 'select') {
+                    wrap.className = "space-y-1 pt-1";
+                    const optionsHtml = ctrl.options.map(opt => 
+                        `<option value="${opt.val}" ${state.params[ctrl.key] === opt.val ? 'selected' : ''}>${opt.text}</option>`
+                    ).join('');
+                    wrap.innerHTML = `
+                        <label class="text-[11px] text-slate-300 font-medium block">${ctrl.label}:</label>
+                        <select class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-amber-300 font-medium focus:outline-none focus:border-amber-500">
+                            ${optionsHtml}
+                        </select>
+                    `;
+                    wrap.querySelector('select').addEventListener('change', (e) => {
+                        state.params[ctrl.key] = e.target.value;
+                        updateShapeDimensions();
+                    });
+                } else {
+                    const val = state.params[ctrl.key];
+                    wrap.className = "space-y-1";
+                    wrap.innerHTML = `
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-300 font-medium">${ctrl.label}</span>
+                            <input type="number" min="${ctrl.min}" max="${ctrl.max * 2}" step="${ctrl.step}" value="${val}" 
+                                class="w-16 px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-right text-xs text-amber-300 font-mono-code font-bold focus:outline-none focus:border-amber-400">
+                        </div>
+                        <input type="range" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${val}" 
+                            class="w-full accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                    `;
+                    const numInput = wrap.querySelector('input[type="number"]');
+                    const sliderInput = wrap.querySelector('input[type="range"]');
+
+                    sliderInput.addEventListener('input', (e) => {
+                        const v = parseFloat(e.target.value);
+                        numInput.value = v;
+                        state.params[ctrl.key] = v;
+                        updateShapeDimensions();
+                    });
+
+                    numInput.addEventListener('input', (e) => {
+                        const v = parseFloat(e.target.value);
+                        if (isNaN(v) || v <= 0.1) return;
+                        sliderInput.value = Math.min(ctrl.max, Math.max(ctrl.min, v));
+                        state.params[ctrl.key] = v;
+                        updateShapeDimensions();
+                    });
+                }
+                box.appendChild(wrap);
+            });
+        }
+
+        function updateFormulasAndMetricsUI(shapeKey) {
+            const data = shapeDB[shapeKey];
+            document.getElementById('formula-shape-name').innerText = data.name;
+            const calc = data.calculate(state.params);
+
+            document.getElementById('live-metrics-box').innerHTML = `
+                <div class="bg-slate-950/90 p-2 rounded-xl border border-slate-800 text-center">
+                    <div class="text-[10px] text-slate-400">Thể tích (V)</div>
+                    <div class="font-mono-code text-xs font-bold text-emerald-400">${calc.V.toFixed(2)}</div>
+                </div>
+                <div class="bg-slate-950/90 p-2 rounded-xl border border-slate-800 text-center">
+                    <div class="text-[10px] text-slate-400">Diện tích XQ</div>
+                    <div class="font-mono-code text-xs font-bold text-blue-400">${calc.Sxq.toFixed(2)}</div>
+                </div>
+                <div class="bg-slate-950/90 p-2 rounded-xl border border-slate-800 text-center">
+                    <div class="text-[10px] text-slate-400">Diện tích TP</div>
+                    <div class="font-mono-code text-xs font-bold text-purple-400">${calc.Stp.toFixed(2)}</div>
+                </div>
+            `;
+
+            const box = document.getElementById('formula-content');
+            box.innerHTML = '';
+            calc.formulas.forEach(f => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-950/60 p-2.5 rounded-xl border border-slate-800";
+                div.innerHTML = `
+                    <div class="text-[10px] text-slate-400">${f.title}</div>
+                    <div class="font-mono-code text-[11px] text-blue-300 font-semibold mt-0.5">${f.eq}</div>
+                `;
+                box.appendChild(div);
+            });
+        }
+
+        function renderManagerLists() {
+            const ptsList = document.getElementById('points-list');
+            const segsList = document.getElementById('segments-list');
+            const vecsList = document.getElementById('vectors-list');
+
+            const selSeg1 = document.getElementById('quick-seg-p1');
+            const selSeg2 = document.getElementById('quick-seg-p2');
+            const selVec1 = document.getElementById('quick-vec-p1');
+            const selVec2 = document.getElementById('quick-vec-p2');
+            const opVec1 = document.getElementById('op-vec-1');
+            const opVec2 = document.getElementById('op-vec-2');
+
+            document.getElementById('points-count-badge').innerText = state.points.length;
+            document.getElementById('segments-count-badge').innerText = state.segments.length + state.planes.length;
+            document.getElementById('vectors-count-badge').innerText = state.vectors.length;
+
+            const prevS1 = selSeg1.value, prevS2 = selSeg2.value;
+            const prevV1 = selVec1.value, prevV2 = selVec2.value;
+
+            selSeg1.innerHTML = ''; selSeg2.innerHTML = '';
+            selVec1.innerHTML = ''; selVec2.innerHTML = '';
+            ptsList.innerHTML = '';
+
+            state.points.forEach(pt => {
+                const opt = `<option value="${pt.id}">${pt.name}</option>`;
+                selSeg1.innerHTML += opt; selSeg2.innerHTML += opt;
+                selVec1.innerHTML += opt; selVec2.innerHTML += opt;
+
+                let subInfo = `(${pt.pos.x.toFixed(1)}; ${pt.pos.y.toFixed(1)}; ${pt.pos.z.toFixed(1)})`;
+                let editRatioBtn = '';
+
+                if (pt.constraint && (pt.constraint.type === 'ratio' || pt.constraint.type === 'midpoint')) {
+                    const p1 = state.points.find(p => p.id === pt.constraint.p1Id);
+                    const p2 = state.points.find(p => p.id === pt.constraint.p2Id);
+                    if (p1 && p2) {
+                        const dist = p1.pos.distanceTo(pt.pos);
+                        subInfo = `${p1.name}${pt.name}=${dist.toFixed(2)} (k=${(pt.constraint.ratio ?? 0.5).toFixed(2)})`;
+                        editRatioBtn = `<button class="p-1 hover:bg-slate-700 rounded text-pink-400" title="Chỉnh tỉ lệ / độ dài điểm ${pt.name}" onclick="openRatioPointModal(null, null, '${pt.id}')">📏</button>`;
+                    }
+                }
+
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between px-2.5 py-1.5 bg-slate-800/70 hover:bg-slate-800 rounded-lg border border-slate-700/60 text-xs transition";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span class="w-5 h-5 rounded-md ${pt.isBase ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'} flex items-center justify-center font-bold text-[11px] shrink-0">${pt.name}</span>
+                        <span class="text-[11px] text-slate-300 font-mono-code truncate">${subInfo}</span>
+                    </div>
+                    <div class="flex items-center gap-0.5 shrink-0">
+                        ${editRatioBtn}
+                        <button class="p-1 hover:bg-slate-700 rounded text-cyan-400" title="Đổi tên đỉnh ${pt.name}" onclick="openRenameModal('${pt.id}')">✏️</button>
+                        <button class="p-1 hover:bg-rose-950 rounded text-rose-400" title="Xóa điểm ${pt.name}" onclick="deletePointById('${pt.id}')">🗑️</button>
+                    </div>
+                `;
+                ptsList.appendChild(row);
+            });
+
+            if (state.points.some(p => p.id === prevS1)) selSeg1.value = prevS1;
+            if (state.points.some(p => p.id === prevS2)) selSeg2.value = prevS2;
+            else if (state.points.length > 1) selSeg2.value = state.points[1].id;
+
+            if (state.points.some(p => p.id === prevV1)) selVec1.value = prevV1;
+            if (state.points.some(p => p.id === prevV2)) selVec2.value = prevV2;
+            else if (state.points.length > 1) selVec2.value = state.points[1].id;
+
+            // Render Vectors List & Operation Selectors
+            const prevOp1 = opVec1.value, prevOp2 = opVec2.value;
+            opVec1.innerHTML = ''; opVec2.innerHTML = '';
+            vecsList.innerHTML = '';
+
+            if (state.vectors.length === 0) {
+                vecsList.innerHTML = `<div class="text-[11px] text-slate-500 italic py-3 text-center bg-slate-950/40 rounded-xl border border-slate-800/70">Chưa có đường vectơ nào. Hãy chọn công cụ "🏹 Kẻ Đường Vectơ" hoặc bấm nút mô phỏng bên trái!</div>`;
+            }
+
+            state.vectors.forEach(vec => {
+                const p1 = state.points.find(p => p.id === vec.p1Id);
+                const p2 = state.points.find(p => p.id === vec.p2Id);
+                if (!p1 || !p2) return;
+                const vecName = `${p1.name}${p2.name}`;
+
+                opVec1.innerHTML += `<option value="${vec.id}">→${vecName}</option>`;
+                opVec2.innerHTML += `<option value="${vec.id}">→${vecName}</option>`;
+
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between px-2.5 py-2 bg-slate-800/80 hover:bg-slate-800 rounded-xl border border-slate-700/70 text-xs transition";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${vec.color}"></span>
+                        <div class="truncate">
+                            <span class="vec-sym font-bold text-white mr-1">${vecName}</span>
+                            <span class="text-[11px] text-emerald-300 font-mono-code font-semibold">|= ${vec.length.toFixed(2)}</span>
+                            <div class="text-[10px] text-slate-400 font-mono-code">(${vec.coords.x.toFixed(1)}; ${vec.coords.y.toFixed(1)}; ${vec.coords.z.toFixed(1)})</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button class="px-1.5 py-0.5 bg-slate-900 hover:bg-slate-700 rounded text-[10px] border border-slate-700 text-cyan-300 font-bold" title="Đảo chiều thành vectơ đối →${p2.name}${p1.name}" onclick="reverseVectorById('${vec.id}')">⇄</button>
+                        <button class="px-1.5 py-0.5 bg-slate-900 hover:bg-slate-700 rounded text-[10px] border border-slate-700 text-rose-300 font-mono-code font-bold" title="Nhân vectơ với hệ số k" onclick="openScaleVectorModal('${vec.id}')">k·v</button>
+                        <button class="px-1.5 py-0.5 bg-slate-900 hover:bg-slate-700 rounded text-[10px] border border-slate-700 text-slate-300" title="Đổi nét liền / nét đứt" onclick="toggleVectorDashed('${vec.id}')">${vec.isDashed ? '---' : '───'}</button>
+                        <button class="p-1 hover:bg-rose-950 rounded text-rose-400" title="Xóa vectơ →${vecName}" onclick="deleteVectorById('${vec.id}')">🗑️</button>
+                    </div>
+                `;
+                vecsList.appendChild(row);
+            });
+
+            if (state.vectors.some(v => v.id === prevOp1)) opVec1.value = prevOp1;
+            if (state.vectors.some(v => v.id === prevOp2)) opVec2.value = prevOp2;
+            else if (state.vectors.length > 1) opVec2.value = state.vectors[1].id;
+
+            // Render Segments & Planes
+            segsList.innerHTML = '';
+            if (state.segments.length === 0 && state.planes.length === 0) {
+                segsList.innerHTML = `<div class="text-[11px] text-slate-500 italic py-2 text-center">Chưa có đoạn thẳng hoặc thiết diện nào.</div>`;
+            }
+
+            state.segments.forEach(seg => {
+                const p1 = state.points.find(p => p.id === seg.p1Id);
+                const p2 = state.points.find(p => p.id === seg.p2Id);
+                const segName = (p1 && p2) ? `${p1.name}${p2.name}` : 'Đoạn';
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between px-2.5 py-1.5 bg-slate-800/70 hover:bg-slate-800 rounded-lg border border-slate-700/60 text-xs";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-yellow-300">${segName}</span>
+                        <span class="text-[11px] text-emerald-300 font-mono-code font-semibold">= ${seg.length.toFixed(2)}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button class="p-1 bg-slate-900 hover:bg-slate-700 rounded text-xs border border-slate-700 text-amber-300" title="Thay đổi độ dài đoạn ${segName}" onclick="openSegmentLengthModal('${seg.id}')">📏</button>
+                        <button class="px-1.5 py-0.5 bg-slate-900 hover:bg-slate-700 rounded text-[10px] border border-slate-700 text-slate-300" title="Đổi nét liền / nét đứt" onclick="toggleSegmentDashed('${seg.id}')">
+                            ${seg.isDashed ? '---' : '───'}
+                        </button>
+                        <button class="p-1 hover:bg-rose-950 rounded text-rose-400" title="Xóa đoạn ${segName}" onclick="deleteSegmentById('${seg.id}')">🗑️</button>
+                    </div>
+                `;
+                segsList.appendChild(row);
+            });
+
+            state.planes.forEach(pl => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between px-2.5 py-1.5 bg-purple-950/30 rounded-lg border border-purple-500/30 text-xs";
+                row.innerHTML = `
+                    <div>
+                        <span class="font-bold text-purple-300">Mặt ${pl.name}</span>
+                        <span class="text-[11px] text-slate-400 font-mono-code ml-1">S = ${pl.area.toFixed(2)}</span>
+                    </div>
+                    <button class="p-1 hover:bg-rose-950 rounded text-rose-400" title="Xóa mặt phẳng" onclick="deletePlaneById('${pl.id}')">🗑️</button>
+                `;
+                segsList.appendChild(row);
+            });
+        }
+
+        function bindUIControls() {
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.currentTool = btn.dataset.tool;
+                    clearSelection();
+
+                    const hints = {
+                        orbit: "Chế độ Xoay/Chọn: Kéo chuột để xoay hình 3D, click vào nhãn đỉnh để đổi tên.",
+                        vector: "🏹 Chế độ Kẻ Đường Vectơ: Click chọn Điểm Đầu (A) rồi Điểm Cuối (B) để dựng mũi tên Vectơ →AB.",
+                        segment: "Chế độ Kẻ Đoạn Thẳng: Click chọn 2 điểm để nối đoạn thẳng và đo độ dài.",
+                        point: "Chế độ Chấm Điểm: Click trực tiếp lên cạnh hoặc mặt của khối hình để thêm điểm mới.",
+                        midpoint: "Chế độ Trung Điểm: Click chọn 2 đỉnh bất kỳ để tự động lấy trung điểm chính xác.",
+                        ratio: "Chế độ Điểm Tỉ Lệ / Độ Dài: Click chọn 2 đỉnh để đặt điểm chia tỉ lệ k hoặc nhập độ dài.",
+                        plane: "Chế độ Thiết Diện: Click chọn từ 3 điểm trở lên rồi bấm 'Hoàn tất Thiết diện'.",
+                        angle: "Chế độ Đo Góc: Click lần lượt 3 điểm A, B, C để tính số đo góc ∠ABC.",
+                        rename: "Chế độ Đổi Tên: Click vào bất kỳ đỉnh nào trên hình 3D để đổi tên.",
+                        delete: "Chế độ Xóa: Click vào điểm, mũi tên vectơ hoặc đoạn thẳng để xóa riêng lẻ."
+                    };
+                    document.getElementById('status-hint').innerText = hints[state.currentTool] || "";
+                    showToast(hints[state.currentTool]);
+                });
+            });
+
+            document.getElementById('dashed-line-toggle').addEventListener('change', (e) => {
+                state.isDashedLine = e.target.checked;
+            });
+
+            document.getElementById('vector-color-picker').addEventListener('input', (e) => {
+                state.vectorColor = e.target.value;
+            });
+
+            document.getElementById('show-vec-coords-toggle').addEventListener('change', (e) => {
+                state.showVectorCoords = e.target.checked;
+                state.vectors.forEach(v => updateVectorLabelContent(v));
+            });
+
+            document.getElementById('show-base-edges-toggle').addEventListener('change', (e) => {
+                state.showBaseEdgeLabels = e.target.checked;
+                state.baseEdgeLabels.forEach(item => {
+                    item.el.style.display = state.showBaseEdgeLabels ? 'block' : 'none';
+                });
+            });
+
+            document.getElementById('reset-dims-btn').addEventListener('click', () => {
+                const shapeData = shapeDB[state.currentShape];
+                state.params = { ...shapeData.defaultParams };
+                buildDimensionControlsUI(state.currentShape);
+                updateShapeDimensions();
+                showToast("Đã khôi phục kích thước mặc định.");
+            });
+
+            document.getElementById('finish-plane-btn').addEventListener('click', finishCurrentPlane);
+
+            document.getElementById('opacity-slider').addEventListener('input', (e) => {
+                state.faceOpacity = parseFloat(e.target.value);
+                if (mainMesh) mainMesh.material.opacity = state.faceOpacity;
+            });
+
+            document.getElementById('toggle-axes-btn').addEventListener('click', (e) => {
+                state.showAxes = !state.showAxes;
+                axesHelper.visible = state.showAxes;
+                e.currentTarget.innerText = `Trục Oxyz: ${state.showAxes ? 'Bật' : 'Tắt'}`;
+            });
+
+            document.getElementById('toggle-grid-btn').addEventListener('click', (e) => {
+                state.showGrid = !state.showGrid;
+                gridHelper.visible = state.showGrid;
+                e.currentTarget.innerText = `Lưới đáy: ${state.showGrid ? 'Bật' : 'Tắt'}`;
+            });
+
+            document.getElementById('toggle-autorotate-btn').addEventListener('click', (e) => {
+                state.autoRotate = !state.autoRotate;
+                controls.autoRotate = state.autoRotate;
+                e.currentTarget.innerText = `Tự xoay: ${state.autoRotate ? 'Bật' : 'Tắt'}`;
+            });
+
+            document.getElementById('restore-shape-btn').addEventListener('click', () => {
+                loadShape(state.currentShape);
+                showToast("Đã làm mới khối hình và khôi phục các đỉnh gốc.");
+            });
+
+            document.getElementById('clear-custom-btn').addEventListener('click', () => {
+                state.points.filter(p => !p.isBase).map(p => p.id).forEach(id => deletePointById(id));
+                state.segments.map(s => s.id).forEach(id => deleteSegmentById(id, false));
+                state.vectors.map(v => v.id).forEach(id => deleteVectorById(id, false));
+                state.planes.map(pl => pl.id).forEach(id => deletePlaneById(id, false));
+                showToast("Đã xóa toàn bộ nét dựng thêm.");
+            });
+
+            document.getElementById('quick-connect-btn').addEventListener('click', () => {
+                const p1Id = document.getElementById('quick-seg-p1').value;
+                const p2Id = document.getElementById('quick-seg-p2').value;
+                if (p1Id && p2Id && p1Id !== p2Id) {
+                    createSegmentObject(p1Id, p2Id, state.isDashedLine);
+                } else {
+                    showToast("Hãy chọn 2 đỉnh khác nhau để nối!");
+                }
+            });
+
+            document.getElementById('quick-draw-vec-btn').addEventListener('click', () => {
+                const p1Id = document.getElementById('quick-vec-p1').value;
+                const p2Id = document.getElementById('quick-vec-p2').value;
+                if (p1Id && p2Id && p1Id !== p2Id) {
+                    createVectorObject(p1Id, p2Id);
+                } else {
+                    showToast("Hãy chọn 2 đỉnh khác nhau để kẻ Vectơ!");
+                }
+            });
+
+            document.getElementById('op-vec-1').addEventListener('change', updateVectorOpComparison);
+            document.getElementById('op-vec-2').addEventListener('change', updateVectorOpComparison);
+
+            // Modals Binding
+            document.getElementById('rename-cancel').onclick = () => document.getElementById('rename-modal').classList.add('hidden');
+            document.getElementById('rename-save').onclick = confirmRenamePoint;
+            document.getElementById('rename-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') confirmRenamePoint();
+            });
+
+            document.getElementById('manual-coord-btn').onclick = () => {
+                document.getElementById('coord-name').value = document.getElementById('next-point-name').value || 'P';
+                document.getElementById('coord-modal').classList.remove('hidden');
+            };
+            document.getElementById('coord-cancel').onclick = () => document.getElementById('coord-modal').classList.add('hidden');
+            document.getElementById('coord-save').onclick = () => {
+                const name = document.getElementById('coord-name').value.trim() || 'P';
+                const x = parseFloat(document.getElementById('coord-x').value) || 0;
+                const y = parseFloat(document.getElementById('coord-y').value) || 0;
+                const z = parseFloat(document.getElementById('coord-z').value) || 0;
+                createPointObject(new THREE.Vector3(x, y, z), name, false, null);
+                document.getElementById('coord-modal').classList.add('hidden');
+                showToast(`Đã tạo điểm ${name}(${x}; ${y}; ${z})`);
+            };
+
+            document.getElementById('open-ratio-modal-btn').onclick = () => openRatioPointModal(null, null, null);
+            document.getElementById('ratio-cancel').onclick = () => document.getElementById('ratio-modal').classList.add('hidden');
+            document.getElementById('ratio-save').onclick = saveRatioPointModal;
+            document.getElementById('ratio-p1-select').addEventListener('change', () => syncRatioModalFields('k'));
+            document.getElementById('ratio-p2-select').addEventListener('change', () => syncRatioModalFields('k'));
+            document.getElementById('ratio-pt-name').addEventListener('input', () => syncRatioModalFields('k'));
+            document.getElementById('ratio-k-slider').addEventListener('input', () => syncRatioModalFields('slider'));
+            document.getElementById('ratio-k-input').addEventListener('input', () => syncRatioModalFields('k'));
+            document.getElementById('ratio-dist-input').addEventListener('input', () => syncRatioModalFields('dist'));
+
+            document.getElementById('seg-len-cancel').onclick = () => document.getElementById('seg-length-modal').classList.add('hidden');
+            document.getElementById('seg-len-save').onclick = saveSegmentLengthModal;
+            document.getElementById('edit-seg-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') saveSegmentLengthModal();
+            });
+        }
+
+        function clearAllGeometryData() {
+            while (pointsGroup && pointsGroup.children.length > 0) pointsGroup.remove(pointsGroup.children[0]);
+            while (segmentsGroup && segmentsGroup.children.length > 0) segmentsGroup.remove(segmentsGroup.children[0]);
+            while (vectorsGroup && vectorsGroup.children.length > 0) vectorsGroup.remove(vectorsGroup.children[0]);
+            while (planesGroup && planesGroup.children.length > 0) planesGroup.remove(planesGroup.children[0]);
+            if (labelsContainer) labelsContainer.innerHTML = '';
+            state.points = [];
+            state.segments = [];
+            state.vectors = [];
+            state.planes = [];
+            state.baseEdgeLabels = [];
+            state.selectedPointIds = [];
+        }
+
+        /**
+         * SYNC 2D FLOATING LABELS WITH 3D VIEWPORT
+         */
+        function updateFloatingLabels() {
+            if (!renderer || !camera) return;
+            const width = renderer.domElement.clientWidth;
+            const height = renderer.domElement.clientHeight;
+            const halfW = width / 2;
+            const halfH = height / 2;
+
+            state.points.forEach(pt => {
+                const proj = pt.pos.clone().project(camera);
+                if (proj.z > 1) {
+                    pt.labelEl.style.display = 'none';
+                    return;
+                }
+                pt.labelEl.style.display = 'block';
+                pt.labelEl.style.left = `${(proj.x * halfW) + halfW}px`;
+                pt.labelEl.style.top = `${-(proj.y * halfH) + halfH}px`;
+            });
+
+            state.segments.forEach(seg => {
+                if (!seg.labelEl) return;
+                const p1 = state.points.find(p => p.id === seg.p1Id);
+                const p2 = state.points.find(p => p.id === seg.p2Id);
+                if (!p1 || !p2) return;
+                const mid = new THREE.Vector3().addVectors(p1.pos, p2.pos).multiplyScalar(0.5);
+                const proj = mid.project(camera);
+                if (proj.z > 1) {
+                    seg.labelEl.style.display = 'none';
+                    return;
+                }
+                seg.labelEl.style.display = 'block';
+                seg.labelEl.style.left = `${(proj.x * halfW) + halfW}px`;
+                seg.labelEl.style.top = `${-(proj.y * halfH) + halfH}px`;
+            });
+
+            state.vectors.forEach(vec => {
+                if (!vec.labelEl) return;
+                const p1 = state.points.find(p => p.id === vec.p1Id);
+                const p2 = state.points.find(p => p.id === vec.p2Id);
+                if (!p1 || !p2) return;
+                // Position label slightly closer to the arrowhead (62% along the vector)
+                const pos = new THREE.Vector3().lerpVectors(p1.pos, p2.pos, 0.62);
+                const proj = pos.project(camera);
+                if (proj.z > 1) {
+                    vec.labelEl.style.display = 'none';
+                    return;
+                }
+                vec.labelEl.style.display = 'block';
+                vec.labelEl.style.left = `${(proj.x * halfW) + halfW}px`;
+                vec.labelEl.style.top = `${-(proj.y * halfH) + halfH}px`;
+            });
+
+            state.baseEdgeLabels.forEach(item => {
+                if (!state.showBaseEdgeLabels || !item.el) return;
+                const p1 = state.points.find(p => p.name === item.p1Name);
+                const p2 = state.points.find(p => p.name === item.p2Name);
+                if (!p1 || !p2) {
+                    item.el.style.display = 'none';
+                    return;
+                }
+                const mid = new THREE.Vector3().addVectors(p1.pos, p2.pos).multiplyScalar(0.5);
+                const proj = mid.project(camera);
+                if (proj.z > 1) {
+                    item.el.style.display = 'none';
+                    return;
+                }
+                item.el.style.display = 'block';
+                item.el.style.left = `${(proj.x * halfW) + halfW}px`;
+                item.el.style.top = `${-(proj.y * halfH) + halfH}px`;
+            });
+        }
+
+        function setCameraPreset(preset) {
+            if (!camera || !controls) return;
+            if (preset === 'iso') camera.position.set(7.2, 5.4, 8.2);
+            else if (preset === 'front') camera.position.set(0, 1.0, 9.5);
+            else if (preset === 'top') camera.position.set(0, 10.5, 0.01);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        function onWindowResize() {
+            const canvasWrap = document.getElementById('canvas-container');
+            if (!canvasWrap || !renderer || !camera) return;
+            const w = canvasWrap.clientWidth;
+            const h = canvasWrap.clientHeight;
+            if (w === 0 || h === 0) return;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            updateFloatingLabels();
+            if (renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        function showToast(msg) {
+            if (!msg) return;
+            const wrap = document.getElementById('toast-container');
+            const el = document.createElement('div');
+            el.className = 'toast';
+            el.innerText = msg;
+            wrap.appendChild(el);
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 0.25s ease';
+                setTimeout(() => el.remove(), 250);
+            }, 2600);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
